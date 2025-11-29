@@ -1,0 +1,82 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Base dark gradient background */
+body {
+  @apply bg-navyDeep text-slate-100;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
+    "Segoe UI", sans-serif;
+}
+
+/* Animated gradient backdrop */
+.app-gradient-bg {
+  background: radial-gradient(circle at 0% 0%, #4338ca 0, transparent 55%),
+    radial-gradient(circle at 100% 0%, #4f46e5 0, transparent 55%),
+    radial-gradient(circle at 0% 100%, #6366f1 0, transparent 55%),
+    radial-gradient(circle at 100% 100%, #0f172a 0, #020617 45%, #020617 100%);
+  background-size: 200% 200%;
+}
+
+/* Glassmorphism card */
+.glass-panel {
+  @apply bg-slate-950/40 backdrop-blur-xl border border-slate-50/10 rounded-3xl shadow-glass-soft;
+}
+
+/* Subtle inner glow for panels */
+.glass-inner {
+  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.06);
+}
+
+/* Neon edge button */
+.btn-neon {
+  @apply relative inline-flex items-center justify-center rounded-full px-5 py-2 text-sm font-medium tracking-tight;
+  @apply text-slate-50 bg-blurple-600/80 hover:bg-blurple-500;
+  box-shadow: 0 0 0 1px rgba(129, 140, 248, 0.7),
+    0 0 18px rgba(99, 102, 241, 0.9);
+}
+
+.btn-neon::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 9999px;
+  background: radial-gradient(circle at 0% 0%, #818cf8, transparent 60%),
+    radial-gradient(circle at 100% 0%, #6366f1, transparent 60%);
+  opacity: 0;
+  transition: opacity 200ms ease-out;
+  z-index: -1;
+}
+
+.btn-neon:hover::before {
+  opacity: 0.8;
+}
+
+/* Chat bubbles springy feel (baseline) */
+.chat-bubble {
+  @apply rounded-3xl px-4 py-2 text-sm;
+  transform-origin: 0% 50%;
+  transition:
+    transform 180ms cubic-bezier(0.18, 0.89, 0.32, 1.28),
+    box-shadow 180ms ease,
+    background-color 180ms ease;
+}
+
+.chat-bubble-pop {
+  transform: scale(1.02) translateY(-1px);
+}
+
+/* Scrollbar styling for glass containers */
+.glass-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.glass-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.glass-scroll::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.5);
+  border-radius: 9999px;
+}
+.glass-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.8);
+}
