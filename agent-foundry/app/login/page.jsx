@@ -3,22 +3,98 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { HiOutlineSparkles, HiOutlineEye, HiOutlineEyeSlash } from "react-icons/hi2";
+import Notification from "@/components/Notification";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [notification, setNotification] = useState(null);
   const [formData, setFormData] = useState({
     email: "",
     password: "",
-    name: "",
   });
 
-  const handleSubmit = (e) => {
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // TODO: Add actual authentication logic here
-    // For now, just redirect to dashboard
-    router.push("/");
+    setLoading(true);
+
+    try {
+      const response = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Login failed");
+      }
+
+      // If backend authentication successful, use backend data
+      if (data.backend_authenticated) {
+        localStorage.setItem("isAuthenticated", "true");
+        localStorage.setItem("patientId", data.patient_id);
+        localStorage.setItem("patientName", data.name);
+        localStorage.setItem("patientEmail", data.email);
+        localStorage.setItem("userAge", data.age);
+        localStorage.setItem("userGender", data.gender);
+        localStorage.setItem("userHeight", data.height);
+        localStorage.setItem("userWeight", data.weight);
+      } else {
+        // Fallback: Check localStorage
+        const storedUserData = localStorage.getItem("user_" + formData.email);
+        
+        if (!storedUserData) {
+          throw new Error("Account not found. Please sign up first.");
+        }
+
+        const userData = JSON.parse(storedUserData);
+
+        // Verify password
+        if (userData.password !== formData.password) {
+          throw new Error("Invalid email or password");
+        }
+
+        // Store session data
+        localStorage.setItem("isAuthenticated", "true");
+        localStorage.setItem("patientId", userData.patient_id);
+        localStorage.setItem("patientName", userData.name);
+        localStorage.setItem("patientEmail", userData.email);
+        localStorage.setItem("userAge", userData.age);
+        localStorage.setItem("userGender", userData.gender);
+        localStorage.setItem("userHeight", userData.height);
+        localStorage.setItem("userWeight", userData.weight);
+      }
+
+      // Show success notification
+      setNotification({
+        type: "success",
+        message: "Login successful! Redirecting...",
+      });
+
+      // Redirect to dashboard
+      setTimeout(() => {
+        router.push("/dashboard");
+      }, 1000);
+
+    } catch (error) {
+      console.error("Login error:", error);
+      setNotification({
+        type: "error",
+        message: error.message || "Invalid email or password",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -30,77 +106,36 @@ export default function LoginPage() {
       </div>
 
       <div className="glass-panel glass-inner w-full max-w-md border-slate-50/20 bg-slate-950/80 p-8 shadow-glass-soft">
-        {/* Logo/Header */}
+        {/* Header */}
         <div className="mb-8 text-center">
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-blurple-400 via-electricSoft to-violetDeep shadow-neon-glow">
             <HiOutlineSparkles className="h-8 w-8 text-slate-50" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-50">AgentFoundry</h1>
+          <h1 className="text-2xl font-bold text-slate-50">Welcome Back</h1>
           <p className="mt-2 text-sm text-slate-400">
-            Your AI Medical Companion
+            Login to AgentFoundry Dashboard
           </p>
-        </div>
-
-        {/* Tabs */}
-        <div className="mb-6 flex rounded-2xl border border-slate-700/60 bg-slate-900/60 p-1">
-          <button
-            onClick={() => setIsLogin(true)}
-            className={`flex-1 rounded-xl px-4 py-2 text-sm font-medium transition-all ${
-              isLogin
-                ? "bg-gradient-to-r from-blurple-500/80 to-electricSoft/60 text-slate-50 shadow-neon-glow"
-                : "text-slate-400 hover:text-slate-200"
-            }`}
-          >
-            Login
-          </button>
-          <button
-            onClick={() => setIsLogin(false)}
-            className={`flex-1 rounded-xl px-4 py-2 text-sm font-medium transition-all ${
-              !isLogin
-                ? "bg-gradient-to-r from-blurple-500/80 to-electricSoft/60 text-slate-50 shadow-neon-glow"
-                : "text-slate-400 hover:text-slate-200"
-            }`}
-          >
-            Sign Up
-          </button>
         </div>
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
-          {!isLogin && (
-            <div>
-              <label className="mb-2 block text-sm font-medium text-slate-300">
-                Full Name
-              </label>
-              <input
-                type="text"
-                value={formData.name}
-                onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
-                placeholder="John Doe"
-                className="w-full rounded-2xl border border-slate-700/60 bg-slate-900/70 px-4 py-3 text-sm text-slate-100 outline-none transition-all placeholder:text-slate-500 focus:border-electricSoft/50 focus:shadow-neon-glow"
-                required
-              />
-            </div>
-          )}
-
+          {/* Email */}
           <div>
             <label className="mb-2 block text-sm font-medium text-slate-300">
               Email Address
             </label>
             <input
               type="email"
+              name="email"
               value={formData.email}
-              onChange={(e) =>
-                setFormData({ ...formData, email: e.target.value })
-              }
+              onChange={handleChange}
               placeholder="you@example.com"
               className="w-full rounded-2xl border border-slate-700/60 bg-slate-900/70 px-4 py-3 text-sm text-slate-100 outline-none transition-all placeholder:text-slate-500 focus:border-electricSoft/50 focus:shadow-neon-glow"
               required
             />
           </div>
 
+          {/* Password */}
           <div>
             <label className="mb-2 block text-sm font-medium text-slate-300">
               Password
@@ -108,10 +143,9 @@ export default function LoginPage() {
             <div className="relative">
               <input
                 type={showPassword ? "text" : "password"}
+                name="password"
                 value={formData.password}
-                onChange={(e) =>
-                  setFormData({ ...formData, password: e.target.value })
-                }
+                onChange={handleChange}
                 placeholder="••••••••"
                 className="w-full rounded-2xl border border-slate-700/60 bg-slate-900/70 px-4 py-3 pr-12 text-sm text-slate-100 outline-none transition-all placeholder:text-slate-500 focus:border-electricSoft/50 focus:shadow-neon-glow"
                 required
@@ -130,49 +164,55 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {isLogin && (
-            <div className="flex items-center justify-between">
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 rounded border-slate-700 bg-slate-900/70 text-blurple-500 focus:ring-electricSoft"
-                />
-                <span className="text-sm text-slate-400">Remember me</span>
-              </label>
-              <button
-                type="button"
-                className="text-sm text-electricSoft transition-colors hover:text-blurple-400"
-              >
-                Forgot password?
-              </button>
-            </div>
-          )}
+          {/* Remember Me & Forgot Password */}
+          <div className="flex items-center justify-between">
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded border-slate-700 bg-slate-900/70 text-blurple-500 focus:ring-electricSoft"
+              />
+              <span className="text-sm text-slate-400">Remember me</span>
+            </label>
+            <button
+              type="button"
+              className="text-sm text-electricSoft transition-colors hover:text-blurple-400"
+            >
+              Forgot password?
+            </button>
+          </div>
 
+          {/* Submit Button */}
           <button
             type="submit"
-            className="btn-neon w-full py-3 text-sm font-medium"
+            disabled={loading}
+            className="btn-neon w-full py-3 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isLogin ? "Login to AgentFoundry" : "Create Account"}
+            {loading ? "Logging in..." : "Login to Dashboard"}
           </button>
         </form>
 
-        {/* Footer */}
-        <div className="mt-6 text-center text-xs text-slate-400">
-          {isLogin ? "Don't have an account? " : "Already have an account? "}
+        {/* Signup Link */}
+        <div className="mt-6 text-center text-sm text-slate-400">
+          Don't have an account?{" "}
           <button
-            onClick={() => setIsLogin(!isLogin)}
+            onClick={() => router.push("/signup")}
             className="text-electricSoft transition-colors hover:text-blurple-400"
           >
-            {isLogin ? "Sign up" : "Login"}
+            Sign up now
           </button>
         </div>
-
-        <div className="mt-6 text-center text-xs text-slate-500">
-          By continuing, you agree to our{" "}
-          <span className="text-slate-400">Terms of Service</span> and{" "}
-          <span className="text-slate-400">Privacy Policy</span>
-        </div>
       </div>
+
+      {/* Notification Toast */}
+      {notification && (
+        <div className="pointer-events-none fixed inset-x-0 top-6 z-50 flex justify-center px-4">
+          <Notification
+            message={notification.message}
+            type={notification.type}
+            onClose={() => setNotification(null)}
+          />
+        </div>
+      )}
     </div>
   );
 }

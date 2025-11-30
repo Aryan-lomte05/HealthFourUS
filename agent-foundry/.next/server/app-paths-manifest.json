@@ -1,5 +1,9 @@
 {
-  "/dashboard/page": "app/dashboard/page.js",
+  "/api/transcribe/route": "app/api/transcribe/route.js",
+  "/_not-found/page": "app/_not-found/page.js",
   "/page": "app/page.js",
+  "/dashboard/page": "app/dashboard/page.js",
+  "/agents/page": "app/agents/page.js",
+  "/chat/page": "app/chat/page.js",
   "/timeline/page": "app/timeline/page.js"
 }

@@ -1,242 +1,282 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
-  HiOutlineSparkles,
-  HiOutlinePhoto,
-  HiOutlineShieldCheck,
-  HiOutlineExclamationTriangle,
-  HiOutlineBeaker,
-  HiOutlineCpuChip,
+  HiOutlineChatBubbleLeftRight,
+  HiOutlineClock,
+  HiOutlineChartBar,
+  HiOutlineUserGroup,
+  HiOutlineArrowRightOnRectangle,
+  HiOutlineHeart,
+  HiOutlineScale,
+  HiOutlineUser,
+  HiOutlineArrowUpTray,
 } from "react-icons/hi2";
 
-const AGENTS = [
-  {
-    id: "primary",
-    name: "Primary Avatar",
-    icon: HiOutlineSparkles,
-    color: "from-blurple-500 to-electricSoft",
-    status: "active",
-  },
-  {
-    id: "diagnostic",
-    name: "Diagnostic Agent",
-    icon: HiOutlineBeaker,
-    color: "from-emerald-500 to-teal-500",
-    status: "active",
-  },
-  {
-    id: "imaging",
-    name: "Imaging Agent",
-    icon: HiOutlinePhoto,
-    color: "from-cyan-500 to-blue-500",
-    status: "idle",
-  },
-  {
-    id: "blockchain",
-    name: "Blockchain Agent",
-    icon: HiOutlineShieldCheck,
-    color: "from-violet-500 to-purple-500",
-    status: "active",
-  },
-  {
-    id: "emergency",
-    name: "Emergency Agent",
-    icon: HiOutlineExclamationTriangle,
-    color: "from-red-500 to-orange-500",
-    status: "idle",
-  },
-];
-
-const MOCK_MESSAGES = [
-  {
-    id: 1,
-    from: "primary",
-    to: "diagnostic",
-    action: "ANALYZE_SYMPTOMS",
-    timestamp: Date.now() - 5000,
-    data: { symptoms: "fever, headache, body pain" },
-  },
-  {
-    id: 2,
-    from: "diagnostic",
-    to: "primary",
-    action: "DIAGNOSIS_RESULT",
-    timestamp: Date.now() - 3000,
-    data: { diagnosis: "Possible viral infection", confidence: 0.87 },
-  },
-  {
-    id: 3,
-    from: "primary",
-    to: "blockchain",
-    action: "SAVE_RECORD",
-    timestamp: Date.now() - 1000,
-    data: { recordType: "diagnosis" },
-  },
-];
-
 export default function DashboardPage() {
-  const [messages, setMessages] = useState(MOCK_MESSAGES);
-  const [selectedAgent, setSelectedAgent] = useState(null);
+  const router = useRouter();
+  const [userData, setUserData] = useState(null);
+  const [bmi, setBMI] = useState(null);
+  const [bmiCategory, setBmiCategory] = useState("");
 
-  // Simulate real-time message updates
   useEffect(() => {
-    const interval = setInterval(() => {
-      // Mock new message every 10 seconds
-      const newMessage = {
-        id: Date.now(),
-        from: "primary",
-        to: "diagnostic",
-        action: "HEARTBEAT",
-        timestamp: Date.now(),
-        data: {},
-      };
-      setMessages((prev) => [...prev, newMessage].slice(-10)); // Keep last 10
-    }, 10000);
+    // Check authentication
+    const isAuth = localStorage.getItem("isAuthenticated");
+    if (!isAuth) {
+      router.push("/login");
+      return;
+    }
 
-    return () => clearInterval(interval);
-  }, []);
+    // Load user data
+    const patientName = localStorage.getItem("patientName");
+    const patientEmail = localStorage.getItem("patientEmail");
+    const age = localStorage.getItem("userAge");
+    const gender = localStorage.getItem("userGender");
+    const height = localStorage.getItem("userHeight");
+    const weight = localStorage.getItem("userWeight");
+    
+    setUserData({
+      name: patientName || "Guest",
+      email: patientEmail || "guest@example.com",
+      age: age || "N/A",
+      gender: gender || "N/A",
+      height: height ? `${height} cm` : "N/A",
+      weight: weight ? `${weight} kg` : "N/A",
+    });
+
+    // Calculate BMI
+    if (height && weight) {
+      const heightM = parseFloat(height) / 100;
+      const bmiValue = (parseFloat(weight) / (heightM * heightM)).toFixed(1);
+      setBMI(bmiValue);
+      
+      // Determine category
+      if (bmiValue < 18.5) setBmiCategory("Underweight");
+      else if (bmiValue < 25) setBmiCategory("Normal");
+      else if (bmiValue < 30) setBmiCategory("Overweight");
+      else setBmiCategory("Obese");
+    }
+  }, [router]);
+
+  const handleLogout = () => {
+    localStorage.clear();
+    router.push("/login");
+  };
+
+  if (!userData) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-slate-400">Loading...</div>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="min-h-screen p-6">
       {/* Header */}
-      <div className="glass-panel glass-inner border-slate-50/10 bg-slate-950/40 p-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold text-slate-50">Agent Network Dashboard</h1>
-            <p className="mt-1 text-sm text-slate-400">
-              Real-time visualization of multi-agent communication
-            </p>
+      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-50">
+            Welcome back, {userData.name}! 👋
+          </h1>
+          <p className="mt-1 text-sm text-slate-400">{userData.email}</p>
+        </div>
+        <button
+          onClick={handleLogout}
+          className="flex items-center gap-2 self-start rounded-2xl border border-slate-700/60 bg-slate-900/70 px-4 py-2 text-sm text-slate-300 transition-all hover:border-red-500/50 hover:bg-red-900/20 hover:text-red-400"
+        >
+          <HiOutlineArrowRightOnRectangle className="h-5 w-5" />
+          Logout
+        </button>
+      </div>
+
+      {/* User Profile Stats */}
+      <div className="mb-8">
+        <h2 className="mb-4 text-xl font-semibold text-slate-50">Your Health Profile</h2>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {/* Age */}
+          <div className="glass-panel glass-inner border-slate-50/10 bg-slate-950/40 p-6">
+            <div className="mb-3 flex items-center gap-2">
+              <HiOutlineUser className="h-6 w-6 text-blurple-400" />
+              <h3 className="text-sm font-medium text-slate-300">Age</h3>
+            </div>
+            <p className="text-3xl font-bold text-slate-50">{userData.age}</p>
+            <p className="mt-1 text-xs text-slate-400 capitalize">{userData.gender}</p>
           </div>
-          <div className="flex items-center gap-2 rounded-2xl border border-emerald-700/60 bg-emerald-900/30 px-4 py-2">
-            <div className="h-2 w-2 animate-pulse rounded-full bg-emerald-400 shadow-[0_0_0_3px_rgba(52,211,153,0.3)]" />
-            <span className="text-sm text-emerald-300">All Systems Active</span>
+
+          {/* Height */}
+          <div className="glass-panel glass-inner border-slate-50/10 bg-slate-950/40 p-6">
+            <div className="mb-3 flex items-center gap-2">
+              <HiOutlineChartBar className="h-6 w-6 text-electricSoft" />
+              <h3 className="text-sm font-medium text-slate-300">Height</h3>
+            </div>
+            <p className="text-3xl font-bold text-slate-50">{userData.height}</p>
+            <p className="mt-1 text-xs text-slate-400">Measured</p>
+          </div>
+
+          {/* Weight */}
+          <div className="glass-panel glass-inner border-slate-50/10 bg-slate-950/40 p-6">
+            <div className="mb-3 flex items-center gap-2">
+              <HiOutlineScale className="h-6 w-6 text-emerald-400" />
+              <h3 className="text-sm font-medium text-slate-300">Weight</h3>
+            </div>
+            <p className="text-3xl font-bold text-slate-50">{userData.weight}</p>
+            <p className="mt-1 text-xs text-slate-400">Current</p>
+          </div>
+
+          {/* BMI */}
+          {bmi && (
+            <div className="glass-panel glass-inner border-slate-50/10 bg-slate-950/40 p-6">
+              <div className="mb-3 flex items-center gap-2">
+                <HiOutlineHeart className="h-6 w-6 text-red-400" />
+                <h3 className="text-sm font-medium text-slate-300">BMI</h3>
+              </div>
+              <p className="text-3xl font-bold text-slate-50">{bmi}</p>
+              <p className="mt-1 text-xs text-slate-400">{bmiCategory}</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Quick Stats */}
+      <div className="mb-8">
+        <h2 className="mb-4 text-xl font-semibold text-slate-50">Quick Stats</h2>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {/* Consultations */}
+          <div className="glass-panel glass-inner border-slate-50/10 bg-slate-950/40 p-6">
+            <div className="mb-3 flex items-center gap-2">
+              <HiOutlineChatBubbleLeftRight className="h-6 w-6 text-blurple-400" />
+              <h3 className="text-sm font-medium text-slate-300">Consultations</h3>
+            </div>
+            <p className="text-3xl font-bold text-slate-50">0</p>
+            <p className="mt-1 text-xs text-slate-400">Start your first chat</p>
+          </div>
+
+          {/* Tokens */}
+          <div className="glass-panel glass-inner border-slate-50/10 bg-slate-950/40 p-6">
+            <div className="mb-3 flex items-center gap-2">
+              <HiOutlineChartBar className="h-6 w-6 text-yellow-400" />
+              <h3 className="text-sm font-medium text-slate-300">HLTH Tokens</h3>
+            </div>
+            <p className="text-3xl font-bold text-slate-50">0</p>
+            <p className="mt-1 text-xs text-slate-400">Earn rewards</p>
+          </div>
+
+          {/* Health Score */}
+          <div className="glass-panel glass-inner border-slate-50/10 bg-slate-950/40 p-6">
+            <div className="mb-3 flex items-center gap-2">
+              <HiOutlineHeart className="h-6 w-6 text-red-400" />
+              <h3 className="text-sm font-medium text-slate-300">Health Score</h3>
+            </div>
+            <p className="text-3xl font-bold text-slate-50">--</p>
+            <p className="mt-1 text-xs text-slate-400">Complete profile</p>
           </div>
         </div>
       </div>
 
-      {/* Agent Grid */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-        {AGENTS.map((agent) => {
-          const Icon = agent.icon;
-          const isSelected = selectedAgent?.id === agent.id;
+      {/* Quick Actions */}
+      <div className="mb-8">
+        <h2 className="mb-4 text-xl font-semibold text-slate-50">Quick Actions</h2>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <Link
+            href="/chat"
+            className="glass-panel glass-inner group flex items-center gap-4 border-slate-50/10 bg-slate-950/40 p-6 transition-all hover:border-electricSoft/50 hover:shadow-neon-glow"
+          >
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blurple-500 to-electricSoft shadow-neon-glow">
+              <HiOutlineChatBubbleLeftRight className="h-6 w-6 text-slate-50" />
+            </div>
+            <div>
+              <h3 className="font-medium text-slate-50">Start Chat</h3>
+              <p className="text-xs text-slate-400">AI consultation</p>
+            </div>
+          </Link>
 
-          return (
-            <motion.button
-              key={agent.id}
-              onClick={() => setSelectedAgent(agent)}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className={`glass-panel glass-inner relative overflow-hidden border-slate-50/10 bg-slate-950/40 p-4 text-left transition-all ${
-                isSelected ? "border-electricSoft/50 shadow-neon-glow" : ""
-              }`}
-            >
-              {/* Status indicator */}
-              <div className="absolute right-3 top-3">
-                <div
-                  className={`h-2 w-2 rounded-full ${
-                    agent.status === "active"
-                      ? "bg-emerald-400 shadow-[0_0_0_3px_rgba(52,211,153,0.3)] animate-pulse"
-                      : "bg-slate-600"
-                  }`}
-                />
-              </div>
+          <Link
+            href="/timeline"
+            className="glass-panel glass-inner group flex items-center gap-4 border-slate-50/10 bg-slate-950/40 p-6 transition-all hover:border-electricSoft/50 hover:shadow-neon-glow"
+          >
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 shadow-neon-glow">
+              <HiOutlineClock className="h-6 w-6 text-slate-50" />
+            </div>
+            <div>
+              <h3 className="font-medium text-slate-50">Timeline</h3>
+              <p className="text-xs text-slate-400">Medical history</p>
+            </div>
+          </Link>
 
-              {/* Icon */}
-              <div
-                className={`mb-3 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br ${agent.color} shadow-neon-glow`}
-              >
-                <Icon className="h-6 w-6 text-slate-50" />
-              </div>
+          <Link
+            href="/agents"
+            className="glass-panel glass-inner group flex items-center gap-4 border-slate-50/10 bg-slate-950/40 p-6 transition-all hover:border-electricSoft/50 hover:shadow-neon-glow"
+          >
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-purple-500 shadow-neon-glow">
+              <HiOutlineUserGroup className="h-6 w-6 text-slate-50" />
+            </div>
+            <div>
+              <h3 className="font-medium text-slate-50">Agents</h3>
+              <p className="text-xs text-slate-400">AI network</p>
+            </div>
+          </Link>
 
-              {/* Name */}
-              <h3 className="text-sm font-semibold text-slate-50">{agent.name}</h3>
-              <p className="mt-1 text-xs text-slate-400 capitalize">{agent.status}</p>
-            </motion.button>
-          );
-        })}
-      </div>
-
-      {/* Message Log */}
-      <div className="glass-panel glass-inner border-slate-50/10 bg-slate-950/40 p-6">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-slate-50">Communication Log</h2>
-          <span className="text-xs text-slate-400">{messages.length} messages</span>
-        </div>
-
-        <div className="glass-scroll max-h-64 space-y-3 overflow-y-auto">
-          {messages.map((msg) => {
-            const fromAgent = AGENTS.find((a) => a.id === msg.from);
-            const toAgent = AGENTS.find((a) => a.id === msg.to);
-
-            return (
-              <motion.div
-                key={msg.id}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="glass-panel glass-inner flex items-center gap-4 border-slate-50/10 bg-slate-900/60 p-3"
-              >
-                {/* From */}
-                <div className="flex items-center gap-2">
-                  <div
-                    className={`flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br ${fromAgent?.color} shadow-md`}
-                  >
-                    {fromAgent && <fromAgent.icon className="h-4 w-4 text-slate-50" />}
-                  </div>
-                  <span className="text-xs text-slate-400">{fromAgent?.name}</span>
-                </div>
-
-                {/* Arrow */}
-                <div className="flex-shrink-0 text-electricSoft">→</div>
-
-                {/* To */}
-                <div className="flex items-center gap-2">
-                  <div
-                    className={`flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br ${toAgent?.color} shadow-md`}
-                  >
-                    {toAgent && <toAgent.icon className="h-4 w-4 text-slate-50" />}
-                  </div>
-                  <span className="text-xs text-slate-400">{toAgent?.name}</span>
-                </div>
-
-                {/* Action */}
-                <div className="ml-auto flex flex-col items-end">
-                  <span className="text-xs font-medium text-slate-200">{msg.action}</span>
-                  <span className="text-[10px] text-slate-500">
-                    {new Date(msg.timestamp).toLocaleTimeString()}
-                  </span>
-                </div>
-              </motion.div>
-            );
-          })}
+          <Link
+            href="/upload"
+            className="glass-panel glass-inner group flex items-center gap-4 border-slate-50/10 bg-slate-950/40 p-6 transition-all hover:border-electricSoft/50 hover:shadow-neon-glow"
+          >
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500 to-red-500 shadow-neon-glow">
+              <HiOutlineArrowUpTray className="h-6 w-6 text-slate-50" />
+            </div>
+            <div>
+              <h3 className="font-medium text-slate-50">Upload</h3>
+              <p className="text-xs text-slate-400">Medical files</p>
+            </div>
+          </Link>
         </div>
       </div>
 
-      {/* Agent Detail Panel */}
-      {selectedAgent && (
+      {/* Getting Started */}
+      <div>
+        <h2 className="mb-4 text-xl font-semibold text-slate-50">Getting Started</h2>
         <div className="glass-panel glass-inner border-slate-50/10 bg-slate-950/40 p-6">
-          <div className="flex items-start gap-4">
-            <div
-              className={`flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${selectedAgent.color} shadow-neon-glow`}
-            >
-              <selectedAgent.icon className="h-8 w-8 text-slate-50" />
+          <div className="space-y-3">
+            <div className="flex items-start gap-3">
+              <div className="mt-1 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-blurple-500/20 text-xs font-bold text-blurple-400">
+                1
+              </div>
+              <div>
+                <h3 className="font-medium text-slate-50">Start your first consultation</h3>
+                <p className="mt-1 text-sm text-slate-400">
+                  Click "Start Chat" and describe your symptoms to get AI-powered health guidance.
+                </p>
+              </div>
             </div>
-            <div className="flex-1">
-              <h3 className="text-lg font-semibold text-slate-50">{selectedAgent.name}</h3>
-              <p className="mt-1 text-sm text-slate-400">
-                Status: <span className="capitalize text-slate-300">{selectedAgent.status}</span>
-              </p>
-              <div className="mt-3 flex gap-2">
-                <button className="btn-neon px-4 py-2 text-xs">View Logs</button>
-                <button className="rounded-2xl border border-slate-700/60 bg-slate-900/70 px-4 py-2 text-xs text-slate-300 transition-all hover:border-slate-500/80 hover:text-slate-100">
-                  Configure
-                </button>
+
+            <div className="flex items-start gap-3">
+              <div className="mt-1 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-xs font-bold text-emerald-400">
+                2
+              </div>
+              <div>
+                <h3 className="font-medium text-slate-50">Upload medical records</h3>
+                <p className="mt-1 text-sm text-slate-400">
+                  Add your X-rays, lab reports, or prescriptions for better AI analysis.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <div className="mt-1 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-violet-500/20 text-xs font-bold text-violet-400">
+                3
+              </div>
+              <div>
+                <h3 className="font-medium text-slate-50">Track your health</h3>
+                <p className="mt-1 text-sm text-slate-400">
+                  View your medical timeline and earn HLTH tokens for staying healthy.
+                </p>
               </div>
             </div>
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
