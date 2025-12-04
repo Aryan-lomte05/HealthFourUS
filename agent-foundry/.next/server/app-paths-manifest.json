@@ -1,10 +1,9 @@
 {
-  "/api/upload/list/route": "app/api/upload/list/route.js",
-  "/api/upload/route": "app/api/upload/route.js",
+  "/api/timeline/chats/route": "app/api/timeline/chats/route.js",
   "/chat/page": "app/chat/page.js",
-  "/login/page": "app/login/page.js",
-  "/signup/page": "app/signup/page.js",
-  "/upload/page": "app/upload/page.js",
+  "/page": "app/page.js",
+  "/timeline/page": "app/timeline/page.js",
+  "/settings/page": "app/settings/page.js",
   "/dashboard/page": "app/dashboard/page.js",
   "/agents/page": "app/agents/page.js"
 }

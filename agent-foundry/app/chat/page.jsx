@@ -1,28 +1,29 @@
 "use client";
 
-import EmergencyAlert from "@/components/EmergencyAlert";
-import { useState, useRef, useEffect } from "react";
+import { lazy, Suspense, useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   HiOutlineHome,
   HiOutlineChatBubbleLeftRight,
   HiOutlineClock,
-  HiOutlineChartBar,
   HiOutlineUserGroup,
   HiOutlineCog6Tooth,
   HiOutlinePaperAirplane,
   HiOutlineArrowUpTray,
 } from "react-icons/hi2";
-
-// Import keyboard icon from the correct package
 import { BsKeyboard } from "react-icons/bs";
+import Link from "next/link";
+
+// ✅ EAGER IMPORTS (Always needed)
 import VoiceInput from "@/components/VoiceInput";
 import ChatBubble from "@/components/ChatBubble";
-import Avatar from "@/components/Avatar";
 import LanguageSelector from "@/components/LanguageSelector";
-import EmergencyButton from "@/components/EmergencyButton";
 import Notification from "@/components/Notification";
-import Link from "next/link";
+
+// ✅ LAZY IMPORTS (Load on demand)
+const EmergencyAlert = lazy(() => import("@/components/EmergencyAlert"));
+const Avatar = lazy(() => import("@/components/Avatar"));
+const EmergencyButton = lazy(() => import("@/components/EmergencyButton"));
 
 const NAV_ITEMS = [
   { id: "dashboard", label: "Dashboard", icon: HiOutlineHome },
@@ -54,6 +55,7 @@ export default function HomePage() {
   const chatEndRef = useRef(null);
   const [showEmergencyAlert, setShowEmergencyAlert] = useState(false);
   const [emergencyType, setEmergencyType] = useState("severe");
+
   // ✅ AUTHENTICATION CHECK
   useEffect(() => {
     const checkAuth = () => {
@@ -76,81 +78,79 @@ export default function HomePage() {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-    const handleSendMessage = async (text) => {
-      if (!text.trim()) return;
+  const handleSendMessage = async (text) => {
+    if (!text.trim()) return;
 
-      const userMessage = {
-        id: Date.now(),
-        type: "user",
-        message: text,
-        timestamp: Date.now(),
-      };
-      setMessages((prev) => [...prev, userMessage]);
-      setTextValue("");
-      setAvatarState("thinking");
+    const userMessage = {
+      id: Date.now(),
+      type: "user",
+      message: text,
+      timestamp: Date.now(),
+    };
+    setMessages((prev) => [...prev, userMessage]);
+    setTextValue("");
+    setAvatarState("thinking");
 
-      try {
-        // Translate to English if needed
-        let translatedText = text;
-        
-        if (selectedLang !== "en") {
-          const translateResponse = await fetch("/api/translate", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              text: text,
-              sourceLang: selectedLang,
-            }),
-          });
-
-          const translateData = await translateResponse.json();
-          
-          if (translateData.success) {
-            translatedText = translateData.translatedText;
-            console.log(`Original (${selectedLang}):`, text);
-            console.log("Translated (en):", translatedText);
-          }
-        }
-
-        // Send to backend
-        const response = await fetch("/api/chat", {
+    try {
+      // Translate to English if needed
+      let translatedText = text;
+      
+      if (selectedLang !== "en") {
+        const translateResponse = await fetch("/api/translate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            message: translatedText,
-            originalMessage: text,
-            language: selectedLang,
+            text: text,
+            sourceLang: selectedLang,
           }),
         });
 
-        const data = await response.json();
-
-        // ✅ CHECK FOR EMERGENCY
-        if (data.emergency) {
-          setEmergencyType(data.emergency_type || "severe");
-          setShowEmergencyAlert(true);
+        const translateData = await translateResponse.json();
+        
+        if (translateData.success) {
+          translatedText = translateData.translatedText;
+          console.log(`Original (${selectedLang}):`, text);
+          console.log("Translated (en):", translatedText);
         }
-
-        // Add bot response
-        const botMessage = {
-          id: Date.now() + 1,
-          type: "bot",
-          message: data.response || "I'm having trouble understanding. Could you rephrase that?",
-          timestamp: Date.now(),
-        };
-        setMessages((prev) => [...prev, botMessage]);
-      } catch (error) {
-        console.error("Chat error:", error);
-        setNotification({
-          type: "error",
-          message: "Failed to get response. Please try again.",
-        });
-      } finally {
-        setAvatarState("idle");
       }
-    };
 
+      // Send to backend
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: translatedText,
+          originalMessage: text,
+          language: selectedLang,
+        }),
+      });
 
+      const data = await response.json();
+
+      // ✅ CHECK FOR EMERGENCY
+      if (data.emergency) {
+        setEmergencyType(data.emergency_type || "severe");
+        setShowEmergencyAlert(true);
+      }
+
+      // Add bot response
+      const botMessage = {
+        id: Date.now() + 1,
+        type: "bot",
+        message: data.response || "I'm having trouble understanding. Could you rephrase that?",
+        timestamp: Date.now(),
+      };
+      setMessages((prev) => [...prev, botMessage]);
+    } catch (error) {
+      console.error("Chat error:", error);
+      setNotification({
+        type: "error",
+        message: "Failed to get response. Please try again.",
+      });
+    } finally {
+      setAvatarState("idle");
+    }
+  };
 
   const handleVoiceTranscript = (transcript) => {
     if (transcript) {
@@ -182,17 +182,10 @@ export default function HomePage() {
     setShowTextInput((prev) => !prev);
   };
 
-  // ✅ LOADING STATE WHILE CHECKING AUTH
-  if (isLoading || !isAuthenticated) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-950 via-blurple-950 to-slate-950">
-        <div className="text-center">
-          <div className="mb-4 h-12 w-12 mx-auto animate-spin rounded-full border-4 border-slate-700 border-t-electricSoft"></div>
-          <p className="text-slate-400">Loading...</p>
-        </div>
-      </div>
-    );
-  }
+  // ✅ KEEP THIS - Simple redirect without custom loading
+    if (isLoading || !isAuthenticated) {
+      return null; // Let Next.js loading.jsx handle it
+    }
 
   return (
     <>
@@ -246,12 +239,16 @@ export default function HomePage() {
 
         {/* CENTER: CHAT AREA */}
         <section className="flex min-h-[580px] flex-1 flex-col gap-4">
-          {/* Avatar Section */}
+          {/* Avatar Section with Suspense */}
           <div className="glass-panel glass-inner relative flex h-40 items-center justify-center border-slate-50/10 bg-slate-950/40">
             <div className="pointer-events-none absolute inset-x-0 top-0 flex justify-center">
               <div className="h-32 w-32 rounded-full bg-gradient-to-br from-blurple-400/30 via-electricSoft/20 to-violetDeep/30 blur-3xl" />
             </div>
-            <Avatar state={avatarState} />
+            <Suspense fallback={
+              <div className="h-20 w-20 animate-spin rounded-full border-4 border-slate-700 border-t-electricSoft" />
+            }>
+              <Avatar state={avatarState} />
+            </Suspense>
           </div>
 
           {/* Chat Messages */}
@@ -326,8 +323,10 @@ export default function HomePage() {
         </section>
       </div>
 
-      {/* Emergency Button */}
-      <EmergencyButton onEmergency={handleEmergency} />
+      {/* Emergency Button with Suspense */}
+      <Suspense fallback={null}>
+        <EmergencyButton onEmergency={handleEmergency} />
+      </Suspense>
 
       {/* Notification Toast */}
       {notification && (
@@ -340,12 +339,14 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* ✅ Emergency Alert Modal */}
-      <EmergencyAlert
-        visible={showEmergencyAlert}
-        onClose={() => setShowEmergencyAlert(false)}
-        type={emergencyType}
-      />
+      {/* Emergency Alert Modal with Suspense */}
+      <Suspense fallback={null}>
+        <EmergencyAlert
+          visible={showEmergencyAlert}
+          onClose={() => setShowEmergencyAlert(false)}
+          type={emergencyType}
+        />
+      </Suspense>
     </>
   );
 }

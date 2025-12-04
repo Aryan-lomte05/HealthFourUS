@@ -3,25 +3,25 @@
 import { useRouter, usePathname } from "next/navigation";
 import "./../styles/globals.css";
 import { HiOutlineArrowRightOnRectangle } from "react-icons/hi2";
+import LoadingTransition from "@/components/LoadingTransition"; // ✅ ADD THIS
 
 export default function RootLayout({ children }) {
   const router = useRouter();
   const pathname = usePathname();
 
-  // Check if we're on login or signup page
   const isAuthPage = pathname === "/login" || pathname === "/signup" || pathname === "/";
 
   const handleLogout = () => {
-    // Clear all user data
     localStorage.clear();
-    
-    // Redirect to login
     router.push("/login");
   };
 
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
       <body className="min-h-screen antialiased" suppressHydrationWarning>
+        {/* ✅ ADD THIS - Loading transition for route changes */}
+        <LoadingTransition />
+
         {/* Animated gradient background */}
         <div className="fixed inset-0 -z-20 app-gradient-bg animate-gradient-slow" />
 
@@ -39,9 +39,7 @@ export default function RootLayout({ children }) {
             <header className="mb-4 flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-gradient-to-br from-blurple-400 via-electricSoft to-violetDeep shadow-neon-glow">
-                  <span className="text-xs font-semibold text-slate-50">
-                    AF
-                  </span>
+                  <span className="text-xs font-semibold text-slate-50">AF</span>
                 </div>
                 <div>
                   <h1 className="text-sm font-semibold tracking-tight text-slate-50 sm:text-base">
@@ -54,13 +52,11 @@ export default function RootLayout({ children }) {
               </div>
 
               <div className="flex items-center gap-2">
-                {/* Status pill */}
                 <span className="inline-flex items-center rounded-full border border-slate-700/70 bg-slate-900/60 px-3 py-1 text-[11px] font-medium text-slate-300 backdrop-blur-xl">
                   <span className="mr-2 h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_0_3px_rgba(52,211,153,0.3)]" />
                   Realtime AI · Connected
                 </span>
 
-                {/* Logout button - only show if NOT on auth pages */}
                 {!isAuthPage && (
                   <button
                     onClick={handleLogout}
