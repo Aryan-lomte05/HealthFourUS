@@ -1,123 +1,154 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import {
-  HiOutlineMicrophone,
-  HiOutlineMicrophoneSlash,
-  HiOutlineStop,
-} from "react-icons/hi2";
+import { HiOutlineMicrophone, HiOutlineStop } from "react-icons/hi2";
 
 export default function VoiceInput({ onTranscript, language = "en" }) {
-  const [state, setState] = useState("idle"); // idle | listening | processing
-  const mediaRecorderRef = useRef(null);
-  const chunksRef = useRef([]);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isSupported, setIsSupported] = useState(true);
+  const recognitionRef = useRef(null);
+
+  // Language mapping for Web Speech API
+  const languageMap = {
+    en: "en-US",
+    hi: "hi-IN",
+    gu: "gu-IN",
+    ta: "ta-IN",
+    ur: "ur-PK",
+    bn: "bn-IN",
+  };
 
   useEffect(() => {
-    // Cleanup on unmount
+    // Check if browser supports Web Speech API
+    if (typeof window !== "undefined") {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      
+      if (!SpeechRecognition) {
+        setIsSupported(false);
+        console.warn("Web Speech API not supported in this browser");
+        return;
+      }
+
+      // Initialize speech recognition
+      const recognition = new SpeechRecognition();
+      recognition.continuous = false; // Stop after one result
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+      recognition.lang = languageMap[language] || "en-US";
+
+      // When speech is recognized
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        console.log("Transcribed:", transcript);
+        onTranscript?.(transcript);
+        setIsRecording(false);
+      };
+
+      // Handle errors
+      recognition.onerror = (event) => {
+        console.error("Speech recognition error:", event.error);
+        if (event.error === "no-speech") {
+          alert("No speech detected. Please try again and speak clearly.");
+        } else if (event.error === "not-allowed") {
+          alert("Microphone permission denied. Please allow microphone access in browser settings.");
+        } else if (event.error === "network") {
+          alert("Network error. Please check your internet connection.");
+        } else {
+          alert(`Speech recognition error: ${event.error}. Please try again.`);
+        }
+        setIsRecording(false);
+      };
+
+      // When recognition ends
+      recognition.onend = () => {
+        setIsRecording(false);
+      };
+
+      recognitionRef.current = recognition;
+    }
+
     return () => {
-      if (mediaRecorderRef.current?.state === "recording") {
-        mediaRecorderRef.current.stop();
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.abort();
+        } catch (e) {
+          // Ignore abort errors
+        }
       }
     };
-  }, []);
+  }, [language, onTranscript]);
 
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = mediaRecorder;
-      chunksRef.current = [];
+  const startRecording = () => {
+    if (!isSupported) {
+      alert("Speech recognition is not supported in this browser. Please use Google Chrome or Microsoft Edge.");
+      return;
+    }
 
-      mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) {
-          chunksRef.current.push(e.data);
+    if (recognitionRef.current) {
+      try {
+        // Update language before starting
+        recognitionRef.current.lang = languageMap[language] || "en-US";
+        recognitionRef.current.start();
+        setIsRecording(true);
+      } catch (error) {
+        console.error("Error starting recognition:", error);
+        if (error.message.includes("already started")) {
+          // Recognition already running, stop it first
+          recognitionRef.current.stop();
+          setTimeout(() => startRecording(), 100);
+        } else {
+          alert("Failed to start recording. Please try again.");
         }
-      };
-
-      mediaRecorder.onstop = async () => {
-        setState("processing");
-        const audioBlob = new Blob(chunksRef.current, { type: "audio/webm" });
-        
-        // Send to backend for transcription
-        const formData = new FormData();
-        formData.append("audio", audioBlob);
-        formData.append("language", language);
-
-        try {
-          const res = await fetch("/api/transcribe", {
-            method: "POST",
-            body: formData,
-          });
-          const data = await res.json();
-          onTranscript?.(data.text || "");
-        } catch (err) {
-          console.error("Transcription error:", err);
-          onTranscript?.("");
-        } finally {
-          setState("idle");
-          stream.getTracks().forEach((track) => track.stop());
-        }
-      };
-
-      mediaRecorder.start();
-      setState("listening");
-    } catch (err) {
-      console.error("Microphone access error:", err);
-      alert("Please allow microphone access to use voice input.");
+      }
     }
   };
 
   const stopRecording = () => {
-    if (mediaRecorderRef.current?.state === "recording") {
-      mediaRecorderRef.current.stop();
+    if (recognitionRef.current && isRecording) {
+      try {
+        recognitionRef.current.stop();
+      } catch (error) {
+        console.error("Error stopping recognition:", error);
+      }
+      setIsRecording(false);
     }
   };
 
-  const handleToggle = () => {
-    if (state === "idle") {
-      startRecording();
-    } else if (state === "listening") {
+  const handleClick = () => {
+    if (isRecording) {
       stopRecording();
+    } else {
+      startRecording();
     }
   };
+
+  if (!isSupported) {
+    return (
+      <div 
+        className="flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-700/60 bg-slate-900/60 opacity-50 cursor-not-allowed" 
+        title="Speech recognition not supported. Use Chrome or Edge browser."
+      >
+        <HiOutlineMicrophone className="h-5 w-5 text-slate-400" />
+      </div>
+    );
+  }
 
   return (
     <button
-      onClick={handleToggle}
-      disabled={state === "processing"}
-      className={`relative flex h-14 w-14 items-center justify-center rounded-full border-2 transition-all duration-300 ${
-        state === "listening"
-          ? "border-red-400 bg-red-500/40 shadow-[0_0_0_1px_rgba(248,113,113,0.7),0_0_24px_rgba(248,113,113,0.95)] scale-110"
-          : state === "processing"
-          ? "border-electricSoft/50 bg-slate-800/60 cursor-wait opacity-80"
-          : "border-electricSoft/80 bg-gradient-to-br from-blurple-500 via-electricSoft to-violetDeep shadow-neon-glow hover:scale-105"
+      onClick={handleClick}
+      className={`flex h-11 w-11 items-center justify-center rounded-2xl border transition-all duration-200 ${
+        isRecording
+          ? "animate-pulse border-red-500 bg-red-600/90 shadow-[0_0_0_1px_rgba(239,68,68,1),0_0_18px_rgba(239,68,68,0.8)]"
+          : "border-slate-600/60 bg-slate-900/60 hover:border-electricSoft/50 hover:bg-slate-900/90 hover:shadow-neon-glow"
       }`}
-      aria-label={
-        state === "idle"
-          ? "Start voice recording"
-          : state === "listening"
-          ? "Stop recording"
-          : "Processing..."
-      }
+      aria-label={isRecording ? "Stop recording" : "Start recording"}
+      title={isRecording ? "Recording... Click to stop" : "Click to speak"}
     >
-      {/* Pulsing ring animation */}
-      {state === "listening" && (
-        <span className="absolute inset-0 animate-ping rounded-full bg-red-500/40" />
+      {isRecording ? (
+        <HiOutlineStop className="h-5 w-5 text-slate-50" />
+      ) : (
+        <HiOutlineMicrophone className="h-5 w-5 text-slate-200" />
       )}
-      {state === "idle" && (
-        <span className="absolute inset-0 animate-ping rounded-full bg-electricSoft/25 opacity-75" />
-      )}
-
-      {/* Icon */}
-      <span className="relative z-10 flex h-9 w-9 items-center justify-center rounded-full bg-slate-950/90">
-        {state === "listening" ? (
-          <HiOutlineStop className="h-5 w-5 text-red-300 animate-pulse" />
-        ) : state === "processing" ? (
-          <div className="h-4 w-4 animate-spin rounded-full border-2 border-electricSoft border-t-transparent" />
-        ) : (
-          <HiOutlineMicrophone className="h-5 w-5 text-electricSoft" />
-        )}
-      </span>
     </button>
   );
 }

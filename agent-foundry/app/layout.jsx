@@ -1,15 +1,27 @@
-// app/layout.jsx
-import "./../styles/globals.css";
+"use client";
 
-export const metadata = {
-  title: "AgentFoundry · AI Medical Avatar",
-  description: "Glassmorphism AI healthcare assistant with blurple theme.",
-};
+import { useRouter, usePathname } from "next/navigation";
+import "./../styles/globals.css";
+import { HiOutlineArrowRightOnRectangle } from "react-icons/hi2";
 
 export default function RootLayout({ children }) {
+  const router = useRouter();
+  const pathname = usePathname();
+
+  // Check if we're on login or signup page
+  const isAuthPage = pathname === "/login" || pathname === "/signup" || pathname === "/";
+
+  const handleLogout = () => {
+    // Clear all user data
+    localStorage.clear();
+    
+    // Redirect to login
+    router.push("/login");
+  };
+
   return (
-    <html lang="en" className="dark">
-      <body className="min-h-screen antialiased">
+    <html lang="en" className="dark" suppressHydrationWarning>
+      <body className="min-h-screen antialiased" suppressHydrationWarning>
         {/* Animated gradient background */}
         <div className="fixed inset-0 -z-20 app-gradient-bg animate-gradient-slow" />
 
@@ -42,12 +54,23 @@ export default function RootLayout({ children }) {
               </div>
 
               <div className="flex items-center gap-2">
-                {/* Placeholder for LanguageSelector and any status pill */}
-                {/* <LanguageSelector /> */}
+                {/* Status pill */}
                 <span className="inline-flex items-center rounded-full border border-slate-700/70 bg-slate-900/60 px-3 py-1 text-[11px] font-medium text-slate-300 backdrop-blur-xl">
                   <span className="mr-2 h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_0_3px_rgba(52,211,153,0.3)]" />
                   Realtime AI · Connected
                 </span>
+
+                {/* Logout button - only show if NOT on auth pages */}
+                {!isAuthPage && (
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center gap-2 rounded-2xl border border-slate-700/70 bg-slate-900/60 px-3 py-1.5 text-xs font-medium text-slate-300 transition-all hover:border-red-500/50 hover:bg-red-500/10 hover:text-red-400"
+                    title="Logout"
+                  >
+                    <HiOutlineArrowRightOnRectangle className="h-4 w-4" />
+                    <span className="hidden sm:inline">Logout</span>
+                  </button>
+                )}
               </div>
             </header>
 

@@ -1,9 +1,10 @@
 {
-  "/api/transcribe/route": "app/api/transcribe/route.js",
-  "/_not-found/page": "app/_not-found/page.js",
-  "/page": "app/page.js",
-  "/dashboard/page": "app/dashboard/page.js",
-  "/agents/page": "app/agents/page.js",
+  "/api/upload/list/route": "app/api/upload/list/route.js",
+  "/api/upload/route": "app/api/upload/route.js",
   "/chat/page": "app/chat/page.js",
-  "/timeline/page": "app/timeline/page.js"
+  "/login/page": "app/login/page.js",
+  "/signup/page": "app/signup/page.js",
+  "/upload/page": "app/upload/page.js",
+  "/dashboard/page": "app/dashboard/page.js",
+  "/agents/page": "app/agents/page.js"
 }

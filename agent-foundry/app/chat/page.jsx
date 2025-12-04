@@ -1,6 +1,8 @@
 "use client";
 
+import EmergencyAlert from "@/components/EmergencyAlert";
 import { useState, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import {
   HiOutlineHome,
   HiOutlineChatBubbleLeftRight,
@@ -9,6 +11,7 @@ import {
   HiOutlineUserGroup,
   HiOutlineCog6Tooth,
   HiOutlinePaperAirplane,
+  HiOutlineArrowUpTray,
 } from "react-icons/hi2";
 
 // Import keyboard icon from the correct package
@@ -21,17 +24,17 @@ import EmergencyButton from "@/components/EmergencyButton";
 import Notification from "@/components/Notification";
 import Link from "next/link";
 
-
 const NAV_ITEMS = [
   { id: "dashboard", label: "Dashboard", icon: HiOutlineHome },
   { id: "chat", label: "Chat", icon: HiOutlineChatBubbleLeftRight },
   { id: "timeline", label: "Timeline", icon: HiOutlineClock },
   { id: "agents", label: "Agents", icon: HiOutlineUserGroup },
   { id: "settings", label: "Settings", icon: HiOutlineCog6Tooth },
+  { id: "upload", label: "Upload", icon: HiOutlineArrowUpTray },
 ];
 
-
 export default function HomePage() {
+  const router = useRouter();
   const [activeNav, setActiveNav] = useState("chat");
   const [selectedLang, setSelectedLang] = useState("en");
   const [showTextInput, setShowTextInput] = useState(false);
@@ -44,60 +47,110 @@ export default function HomePage() {
       timestamp: Date.now(),
     },
   ]);
-  const [avatarState, setAvatarState] = useState("idle"); // idle | thinking
+  const [avatarState, setAvatarState] = useState("idle");
   const [notification, setNotification] = useState(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const chatEndRef = useRef(null);
+  const [showEmergencyAlert, setShowEmergencyAlert] = useState(false);
+  const [emergencyType, setEmergencyType] = useState("severe");
+  // ✅ AUTHENTICATION CHECK
+  useEffect(() => {
+    const checkAuth = () => {
+      const isAuth = localStorage.getItem("isAuthenticated");
+      
+      if (!isAuth || isAuth !== "true") {
+        router.push("/login");
+        return;
+      }
+      
+      setIsAuthenticated(true);
+      setIsLoading(false);
+    };
+
+    checkAuth();
+  }, [router]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const handleSendMessage = async (text) => {
-    if (!text.trim()) return;
+    const handleSendMessage = async (text) => {
+      if (!text.trim()) return;
 
-    // Add user message
-    const userMessage = {
-      id: Date.now(),
-      type: "user",
-      message: text,
-      timestamp: Date.now(),
-    };
-    setMessages((prev) => [...prev, userMessage]);
-    setTextValue("");
-    setAvatarState("thinking");
-
-    try {
-      // Call backend API
-      const response = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: text,
-          language: selectedLang,
-        }),
-      });
-
-      const data = await response.json();
-
-      // Add bot response
-      const botMessage = {
-        id: Date.now() + 1,
-        type: "bot",
-        message: data.response || "I'm having trouble understanding. Could you rephrase that?",
+      const userMessage = {
+        id: Date.now(),
+        type: "user",
+        message: text,
         timestamp: Date.now(),
       };
-      setMessages((prev) => [...prev, botMessage]);
-    } catch (error) {
-      console.error("Chat error:", error);
-      setNotification({
-        type: "error",
-        message: "Failed to get response. Please try again.",
-      });
-    } finally {
-      setAvatarState("idle");
-    }
-  };
+      setMessages((prev) => [...prev, userMessage]);
+      setTextValue("");
+      setAvatarState("thinking");
+
+      try {
+        // Translate to English if needed
+        let translatedText = text;
+        
+        if (selectedLang !== "en") {
+          const translateResponse = await fetch("/api/translate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              text: text,
+              sourceLang: selectedLang,
+            }),
+          });
+
+          const translateData = await translateResponse.json();
+          
+          if (translateData.success) {
+            translatedText = translateData.translatedText;
+            console.log(`Original (${selectedLang}):`, text);
+            console.log("Translated (en):", translatedText);
+          }
+        }
+
+        // Send to backend
+        const response = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: translatedText,
+            originalMessage: text,
+            language: selectedLang,
+          }),
+        });
+
+        const data = await response.json();
+
+        // ✅ CHECK FOR EMERGENCY
+        if (data.emergency) {
+          setEmergencyType(data.emergency_type || "severe");
+          setShowEmergencyAlert(true);
+        }
+
+        // Add bot response
+        const botMessage = {
+          id: Date.now() + 1,
+          type: "bot",
+          message: data.response || "I'm having trouble understanding. Could you rephrase that?",
+          timestamp: Date.now(),
+        };
+        setMessages((prev) => [...prev, botMessage]);
+      } catch (error) {
+        console.error("Chat error:", error);
+        setNotification({
+          type: "error",
+          message: "Failed to get response. Please try again.",
+        });
+      } finally {
+        setAvatarState("idle");
+      }
+    };
+
+
 
   const handleVoiceTranscript = (transcript) => {
     if (transcript) {
@@ -111,14 +164,13 @@ export default function HomePage() {
       message: "🚨 Emergency alert sent! Finding nearby doctors...",
     });
 
-    // TODO: Trigger emergency smart contract + doctor notification
     try {
       await fetch("/api/emergency", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          patientId: "user123", // Replace with actual user ID
-          location: { lat: 0, lng: 0 }, // Replace with real geolocation
+          patientId: localStorage.getItem("patientId") || "user123",
+          location: { lat: 0, lng: 0 },
         }),
       });
     } catch (error) {
@@ -130,6 +182,18 @@ export default function HomePage() {
     setShowTextInput((prev) => !prev);
   };
 
+  // ✅ LOADING STATE WHILE CHECKING AUTH
+  if (isLoading || !isAuthenticated) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-950 via-blurple-950 to-slate-950">
+        <div className="text-center">
+          <div className="mb-4 h-12 w-12 mx-auto animate-spin rounded-full border-4 border-slate-700 border-t-electricSoft"></div>
+          <p className="text-slate-400">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       <div className="flex gap-4 sm:gap-6 lg:gap-8">
@@ -140,52 +204,50 @@ export default function HomePage() {
           </div>
 
           <nav className="glass-scroll flex-1 space-y-2 overflow-y-auto pb-4">
-  {NAV_ITEMS.map((item) => {
-    const Icon = item.icon;
-    const isActive = activeNav === item.id;
-    
-    // Define routes
-    const routes = {
-    dashboard: "/dashboard",  // User Dashboard (stats, profile)
-    chat: "/chat",            // Chat interface  
-    timeline: "/timeline",    // Medical timeline
-    agents: "/agents",        // Agent Dashboard
-    settings: "/settings",    // Settings
-    };
+            {NAV_ITEMS.map((item) => {
+              const Icon = item.icon;
+              const isActive = activeNav === item.id;
 
-    
-    return (
-      <Link
-        key={item.id}
-        href={routes[item.id]}
-        onClick={() => setActiveNav(item.id)}
-        className={`group flex w-full flex-col items-center gap-1 rounded-2xl px-2 py-2 text-[10px] font-medium transition-all duration-200 ${
-          isActive
-            ? "bg-gradient-to-b from-blurple-500/80 via-blurple-500/40 to-slate-900/80 text-slate-50 shadow-neon-glow"
-            : "bg-slate-900/40 text-slate-400 hover:bg-slate-900/80 hover:text-slate-100 hover:shadow-glass-soft"
-        }`}
-      >
-        <div
-          className={`flex h-9 w-9 items-center justify-center rounded-2xl border border-slate-500/30 shadow-inner ${
-            isActive
-              ? "bg-gradient-to-br from-blurple-400 via-electricSoft to-violetDeep"
-              : "bg-slate-900/70"
-          }`}
-        >
-          <Icon className="h-4 w-4" />
-        </div>
-        <span className="truncate">{item.label}</span>
-      </Link>
-    );
-  })}
-</nav>
+              const routes = {
+                dashboard: "/dashboard",
+                chat: "/chat",
+                timeline: "/timeline",
+                agents: "/agents",
+                settings: "/settings",
+                upload: "/upload",
+              };
+
+              return (
+                <Link
+                  key={item.id}
+                  href={routes[item.id]}
+                  onClick={() => setActiveNav(item.id)}
+                  className={`group flex w-full flex-col items-center gap-1 rounded-2xl px-2 py-2 text-[10px] font-medium transition-all duration-200 ${
+                    isActive
+                      ? "bg-gradient-to-b from-blurple-500/80 via-blurple-500/40 to-slate-900/80 text-slate-50 shadow-neon-glow"
+                      : "bg-slate-900/40 text-slate-400 hover:bg-slate-900/80 hover:text-slate-100 hover:shadow-glass-soft"
+                  }`}
+                >
+                  <div
+                    className={`flex h-9 w-9 items-center justify-center rounded-2xl border border-slate-500/30 shadow-inner ${
+                      isActive
+                        ? "bg-gradient-to-br from-blurple-400 via-electricSoft to-violetDeep"
+                        : "bg-slate-900/70"
+                    }`}
+                  >
+                    <Icon className="h-4 w-4" />
+                  </div>
+                  <span className="truncate">{item.label}</span>
+                </Link>
+              );
+            })}
+          </nav>
         </aside>
 
         {/* CENTER: CHAT AREA */}
         <section className="flex min-h-[580px] flex-1 flex-col gap-4">
           {/* Avatar Section */}
           <div className="glass-panel glass-inner relative flex h-40 items-center justify-center border-slate-50/10 bg-slate-950/40">
-            {/* Ambient glow */}
             <div className="pointer-events-none absolute inset-x-0 top-0 flex justify-center">
               <div className="h-32 w-32 rounded-full bg-gradient-to-br from-blurple-400/30 via-electricSoft/20 to-violetDeep/30 blur-3xl" />
             </div>
@@ -207,7 +269,6 @@ export default function HomePage() {
 
           {/* Input Bar */}
           <div className="glass-panel glass-inner flex flex-col gap-3 rounded-3xl border-slate-50/20 bg-slate-950/70 px-3 py-3 shadow-glass-soft sm:flex-row sm:items-center sm:px-4 sm:py-3">
-            {/* Left: keyboard toggle + language */}
             <div className="flex items-center gap-2">
               <button
                 onClick={handleKeyboardToggle}
@@ -224,7 +285,6 @@ export default function HomePage() {
               <LanguageSelector value={selectedLang} onChange={setSelectedLang} />
             </div>
 
-            {/* Center: text input or placeholder */}
             <div className="flex flex-1 items-center gap-2">
               {showTextInput ? (
                 <div className="flex flex-1 items-center gap-2 rounded-2xl border border-slate-700/60 bg-slate-900/70 px-3 py-2">
@@ -256,7 +316,6 @@ export default function HomePage() {
               )}
             </div>
 
-            {/* Right: voice input */}
             <div className="flex justify-center sm:justify-end">
               <VoiceInput
                 onTranscript={handleVoiceTranscript}
@@ -267,7 +326,7 @@ export default function HomePage() {
         </section>
       </div>
 
-      {/* Emergency Button (Fixed Position) */}
+      {/* Emergency Button */}
       <EmergencyButton onEmergency={handleEmergency} />
 
       {/* Notification Toast */}
@@ -280,6 +339,13 @@ export default function HomePage() {
           />
         </div>
       )}
+
+      {/* ✅ Emergency Alert Modal */}
+      <EmergencyAlert
+        visible={showEmergencyAlert}
+        onClose={() => setShowEmergencyAlert(false)}
+        type={emergencyType}
+      />
     </>
   );
 }
