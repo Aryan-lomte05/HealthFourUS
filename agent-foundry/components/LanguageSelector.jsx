@@ -1,71 +1,85 @@
 "use client";
 
-import { useState } from "react";
-import { HiOutlineGlobeAlt, HiOutlineChevronDown } from "react-icons/hi2";
+import { useState, useRef, useEffect } from "react";
+import { HiChevronDown, HiLanguage } from "react-icons/hi2";
 
 const LANGUAGES = [
-  { code: "en", label: "English", isRTL: false },
-  { code: "hi", label: "हिंदी (Hindi)", isRTL: false },
-  { code: "gu", label: "ગુજરાતી (Gujarati)", isRTL: false },
-  { code: "ur", label: "اردو (Urdu)", isRTL: true },
-  { code: "ta", label: "தமிழ் (Tamil)", isRTL: false },
-  { code: "bn", label: "বাংলা (Bengali)", isRTL: false },
+  { code: "en", name: "English", flag: "🇬🇧" },
+  { code: "hi", name: "Hindi", flag: "🇮🇳" },
+  { code: "gu", name: "Gujarati", flag: "🇮🇳" },
+  { code: "mr", name: "Marathi", flag: "🇮🇳" },
+  { code: "ta", name: "Tamil", flag: "🇮🇳" },
+  { code: "te", name: "Telugu", flag: "🇮🇳" },
 ];
 
-export default function LanguageSelector({ value = "en", onChange }) {
+export default function LanguageSelector({ value, onChange }) {
   const [isOpen, setIsOpen] = useState(false);
-  const selectedLang = LANGUAGES.find((l) => l.code === value) || LANGUAGES[0];
+  const dropdownRef = useRef(null);
+
+  const selectedLanguage = LANGUAGES.find((lang) => lang.code === value) || LANGUAGES[0];
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isOpen]);
 
   const handleSelect = (code) => {
-    onChange?.(code);
+    onChange(code);
     setIsOpen(false);
   };
 
   return (
-    <div className="relative">
+    <div className="relative" ref={dropdownRef}>
+      {/* ✅ Dropdown Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 rounded-2xl border border-slate-700/60 bg-slate-900/70 px-3 py-2 text-xs text-slate-200 transition-all hover:border-slate-500/80 hover:bg-slate-900/90 hover:shadow-glass-soft"
+        className="flex h-11 items-center gap-2 rounded-2xl border border-slate-600/60 bg-slate-900/60 px-3 py-2 text-sm text-slate-200 transition-all hover:border-slate-400/80 hover:bg-slate-900/90"
+        aria-label="Select language"
       >
-        <HiOutlineGlobeAlt className="h-4 w-4 text-electricSoft" />
-        <span className="hidden sm:inline">{selectedLang.label}</span>
-        <HiOutlineChevronDown
-          className={`h-3 w-3 transition-transform ${
+        <HiLanguage className="h-4 w-4" />
+        <span className="hidden sm:inline">{selectedLanguage.flag} {selectedLanguage.name}</span>
+        <span className="sm:hidden">{selectedLanguage.flag}</span>
+        <HiChevronDown 
+          className={`h-3 w-3 transition-transform duration-200 ${
             isOpen ? "rotate-180" : ""
-          }`}
+          }`} 
         />
       </button>
 
+      {/* ✅ Dropdown Menu - OPENS UPWARD */}
       {isOpen && (
-        <>
-          {/* Backdrop */}
-          <div
-            onClick={() => setIsOpen(false)}
-            className="fixed inset-0 z-40"
-          />
-          {/* Dropdown */}
-          <div className="glass-panel absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden border-slate-50/10 bg-slate-950/90 shadow-glass-soft">
+        <div className="absolute bottom-full left-0 mb-2 z-50 w-48 rounded-2xl border border-slate-700/50 bg-slate-900/95 backdrop-blur-xl shadow-xl animate-fade-in">
+          <div className="p-2 space-y-1">
             {LANGUAGES.map((lang) => (
               <button
                 key={lang.code}
                 onClick={() => handleSelect(lang.code)}
-                className={`flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm transition-all ${
-                  lang.code === value
-                    ? "bg-gradient-to-r from-blurple-500/30 to-transparent text-slate-50 shadow-inner"
-                    : "text-slate-300 hover:bg-slate-900/60 hover:text-slate-100"
+                className={`w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-all ${
+                  value === lang.code
+                    ? "bg-blurple-500/80 text-slate-50 shadow-neon-glow"
+                    : "text-slate-300 hover:bg-slate-800/80 hover:text-slate-100"
                 }`}
-                dir={lang.isRTL ? "rtl" : "ltr"}
               >
-                {lang.code === value && (
-                  <div className="h-1.5 w-1.5 rounded-full bg-electricSoft shadow-[0_0_0_3px_rgba(129,140,248,0.4)]" />
+                <span className="text-xl">{lang.flag}</span>
+                <span className="font-medium">{lang.name}</span>
+                {value === lang.code && (
+                  <span className="ml-auto text-xs">✓</span>
                 )}
-                <span className={lang.isRTL ? "font-urdu" : ""}>
-                  {lang.label}
-                </span>
               </button>
             ))}
           </div>
-        </>
+        </div>
       )}
     </div>
   );

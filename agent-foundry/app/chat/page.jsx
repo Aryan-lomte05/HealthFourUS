@@ -14,15 +14,16 @@ import {
 import { BsKeyboard } from "react-icons/bs";
 import Link from "next/link";
 
-// ✅ EAGER IMPORTS (Always needed)
+// ✅ EAGER IMPORTS
 import VoiceInput from "@/components/VoiceInput";
 import ChatBubble from "@/components/ChatBubble";
 import LanguageSelector from "@/components/LanguageSelector";
 import Notification from "@/components/Notification";
+import { useTextToSpeech } from "@/hooks/useTextToSpeech";
 
-// ✅ LAZY IMPORTS (Load on demand)
+// ✅ LAZY IMPORTS
 const EmergencyAlert = lazy(() => import("@/components/EmergencyAlert"));
-const Avatar = lazy(() => import("@/components/Avatar"));
+const DoctorAvatarWithLipSync = lazy(() => import("@/components/DoctorAvatarWithLipSync"));
 const EmergencyButton = lazy(() => import("@/components/EmergencyButton"));
 
 const NAV_ITEMS = [
@@ -44,8 +45,9 @@ export default function HomePage() {
     {
       id: 1,
       type: "bot",
-      message: "Hello! I'm AgentFoundry, your AI medical assistant. How can I help you today?",
+      message: "Hello! I'm Dr. AgentFoundry, your AI medical assistant. How can I help you today?",
       timestamp: Date.now(),
+      language: "en",
     },
   ]);
   const [avatarState, setAvatarState] = useState("idle");
@@ -55,6 +57,9 @@ export default function HomePage() {
   const chatEndRef = useRef(null);
   const [showEmergencyAlert, setShowEmergencyAlert] = useState(false);
   const [emergencyType, setEmergencyType] = useState("severe");
+  
+  // ✅ Text-to-Speech hook
+  const { speak, stop } = useTextToSpeech();
 
   // ✅ AUTHENTICATION CHECK
   useEffect(() => {
@@ -73,87 +78,230 @@ export default function HomePage() {
     checkAuth();
   }, [router]);
 
-  // Auto-scroll to bottom when new messages arrive
+  // Auto-scroll to bottom
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const handleSendMessage = async (text) => {
-    if (!text.trim()) return;
+const handleSendMessage = async (text) => {
+  if (!text.trim()) return;
 
-    const userMessage = {
-      id: Date.now(),
-      type: "user",
-      message: text,
-      timestamp: Date.now(),
-    };
-    setMessages((prev) => [...prev, userMessage]);
-    setTextValue("");
-    setAvatarState("thinking");
+  // Stop any ongoing speech
+  stop();
 
-    try {
-      // Translate to English if needed
-      let translatedText = text;
-      
-      if (selectedLang !== "en") {
+  // ✅ Display user message in their chosen language (as-is)
+  const userMessage = {
+    id: Date.now(),
+    type: "user",
+    message: text,
+    timestamp: Date.now(),
+    language: selectedLang,
+  };
+  setMessages((prev) => [...prev, userMessage]);
+  setTextValue("");
+  setAvatarState("thinking");
+
+  try {
+    // ✅ STEP 1: Translate to English for backend (if not English)
+    let englishText = text;
+    
+    if (selectedLang !== "en") {
+      try {
         const translateResponse = await fetch("/api/translate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             text: text,
             sourceLang: selectedLang,
+            targetLang: "en",
           }),
         });
 
-        const translateData = await translateResponse.json();
-        
-        if (translateData.success) {
-          translatedText = translateData.translatedText;
-          console.log(`Original (${selectedLang}):`, text);
-          console.log("Translated (en):", translatedText);
+        if (translateResponse.ok) {
+          const translateData = await translateResponse.json();
+          if (translateData.success) {
+            englishText = translateData.translatedText;
+            console.log(`📝 User (${selectedLang}):`, text);
+            console.log(`🔄 Translated to English:`, englishText);
+          }
         }
+      } catch (error) {
+        console.error("Translation error:", error);
       }
+    }
 
-      // Send to backend
+    // ✅ STEP 2: Send English text to backend
+    let englishResponse = null;
+    let backendFailed = false;
+    
+    try {
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: translatedText,
+          message: englishText,
           originalMessage: text,
           language: selectedLang,
         }),
       });
 
-      const data = await response.json();
+      if (response.ok) {
+        const data = await response.json();
+        
+        // Check for emergency
+        if (data.emergency) {
+          setEmergencyType(data.emergency_type || "severe");
+          setShowEmergencyAlert(true);
+        }
 
-      // ✅ CHECK FOR EMERGENCY
-      if (data.emergency) {
-        setEmergencyType(data.emergency_type || "severe");
-        setShowEmergencyAlert(true);
+        englishResponse = data.response;
+        console.log(`🤖 Backend response (English):`, englishResponse);
+      } else {
+        backendFailed = true;
       }
+    } catch (backendError) {
+      console.error("Backend error:", backendError);
+      backendFailed = true;
+    }
 
-      // Add bot response
-      const botMessage = {
-        id: Date.now() + 1,
-        type: "bot",
-        message: data.response || "I'm having trouble understanding. Could you rephrase that?",
-        timestamp: Date.now(),
-      };
-      setMessages((prev) => [...prev, botMessage]);
-    } catch (error) {
-      console.error("Chat error:", error);
-      setNotification({
-        type: "error",
-        message: "Failed to get response. Please try again.",
-      });
-    } finally {
+    // ✅ STEP 3: If backend failed, use error message (in English first)
+    if (backendFailed || !englishResponse) {
+      englishResponse = "Please try again later. There is some issue on our end.";
+      console.log("⚠️ Using error message");
+    }
+
+    // ✅ STEP 4: Translate response to user's language
+    let userLanguageResponse = englishResponse;
+
+    if (selectedLang !== "en") {
+      try {
+        console.log(`🔄 Translating "${englishResponse}" to ${selectedLang}...`);
+        
+        const translateBackResponse = await fetch("/api/translate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            text: englishResponse,
+            sourceLang: "en",
+            targetLang: selectedLang,
+          }),
+        });
+
+        if (translateBackResponse.ok) {
+          const translateBackData = await translateBackResponse.json();
+          if (translateBackData.success && translateBackData.translatedText) {
+            userLanguageResponse = translateBackData.translatedText;
+            console.log(`✅ Translated to ${selectedLang}:`, userLanguageResponse);
+          } else {
+            console.warn("Translation failed, keeping English");
+          }
+        } else {
+          console.warn("Translation API error, keeping English");
+        }
+      } catch (error) {
+        console.error("Translation back error:", error);
+        console.warn("Keeping English due to error");
+      }
+    }
+
+    // ✅ STEP 5: Display response in user's language
+    const botMessage = {
+      id: Date.now() + 1,
+      type: "bot",
+      message: userLanguageResponse,
+      timestamp: Date.now(),
+      language: selectedLang,
+    };
+    setMessages((prev) => [...prev, botMessage]);
+
+    // ✅ STEP 6: Speak in user's language (TRANSLATED TEXT)
+    console.log(`🎙️ About to speak: "${userLanguageResponse}" in ${selectedLang}`);
+    
+    setAvatarState("speaking");
+    speak(userLanguageResponse, selectedLang, () => {
+      console.log("Speech completed");
       setAvatarState("idle");
+    });
+
+  } catch (error) {
+    console.error("Fatal error:", error);
+    
+    // ✅ Even for fatal errors, translate the error message
+    const errorMessageEnglish = "Please try again later. There is some issue on our end.";
+    let errorMessageTranslated = errorMessageEnglish;
+
+    if (selectedLang !== "en") {
+      try {
+        const errorTranslateResponse = await fetch("/api/translate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            text: errorMessageEnglish,
+            sourceLang: "en",
+            targetLang: selectedLang,
+          }),
+        });
+
+        if (errorTranslateResponse.ok) {
+          const errorTranslateData = await errorTranslateResponse.json();
+          if (errorTranslateData.success) {
+            errorMessageTranslated = errorTranslateData.translatedText;
+          }
+        }
+      } catch (translateError) {
+        console.error("Error translating error message:", translateError);
+      }
+    }
+
+    // Display translated error
+    const errorBotMessage = {
+      id: Date.now() + 1,
+      type: "bot",
+      message: errorMessageTranslated,
+      timestamp: Date.now(),
+      language: selectedLang,
+    };
+    setMessages((prev) => [...prev, errorBotMessage]);
+
+    // Speak translated error
+    setAvatarState("speaking");
+    speak(errorMessageTranslated, selectedLang, () => {
+      setAvatarState("idle");
+    });
+
+    setNotification({
+      type: "error",
+      message: "Failed to get response. Please try again.",
+    });
+  }
+};
+
+
+  // ✅ Helper function to translate error message
+  const translateErrorMessage = async (targetLang) => {
+    const defaultError = "Please try again later. There is some issue on our end.";
+    
+    try {
+      const response = await fetch("/api/translate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: defaultError,
+          sourceLang: "en",
+          targetLang: targetLang,
+        }),
+      });
+
+      const data = await response.json();
+      return data.success ? data.translatedText : defaultError;
+    } catch (error) {
+      return defaultError;
     }
   };
 
   const handleVoiceTranscript = (transcript) => {
     if (transcript) {
+      setAvatarState("thinking");
       handleSendMessage(transcript);
     }
   };
@@ -182,10 +330,9 @@ export default function HomePage() {
     setShowTextInput((prev) => !prev);
   };
 
-  // ✅ KEEP THIS - Simple redirect without custom loading
-    if (isLoading || !isAuthenticated) {
-      return null; // Let Next.js loading.jsx handle it
-    }
+  if (isLoading || !isAuthenticated) {
+    return null;
+  }
 
   return (
     <>
@@ -239,26 +386,31 @@ export default function HomePage() {
 
         {/* CENTER: CHAT AREA */}
         <section className="flex min-h-[580px] flex-1 flex-col gap-4">
-          {/* Avatar Section with Suspense */}
-          <div className="glass-panel glass-inner relative flex h-40 items-center justify-center border-slate-50/10 bg-slate-950/40">
+          
+          {/* Avatar Section */}
+          <div className="glass-panel glass-inner relative flex h-96 items-center justify-center border-slate-50/10 bg-slate-950/40 overflow-hidden">
             <div className="pointer-events-none absolute inset-x-0 top-0 flex justify-center">
-              <div className="h-32 w-32 rounded-full bg-gradient-to-br from-blurple-400/30 via-electricSoft/20 to-violetDeep/30 blur-3xl" />
+              <div className="h-64 w-64 rounded-full bg-gradient-to-br from-blurple-400/30 via-electricSoft/20 to-violetDeep/30 blur-3xl" />
             </div>
+            
             <Suspense fallback={
-              <div className="h-20 w-20 animate-spin rounded-full border-4 border-slate-700 border-t-electricSoft" />
+              <div className="flex items-center justify-center h-full">
+                <div className="h-20 w-20 animate-spin rounded-full border-4 border-slate-700 border-t-electricSoft" />
+              </div>
             }>
-              <Avatar state={avatarState} />
+              <DoctorAvatarWithLipSync state={avatarState} />
             </Suspense>
           </div>
 
           {/* Chat Messages */}
-          <div className="glass-panel glass-inner glass-scroll flex-1 space-y-3 overflow-y-auto border-slate-50/10 bg-slate-950/40 p-4">
+          <div className="glass-panel glass-inner glass-scroll h-48 space-y-3 overflow-y-auto border-slate-50/10 bg-slate-950/40 p-4">
             {messages.map((msg) => (
               <ChatBubble
                 key={msg.id}
                 message={msg.message}
                 type={msg.type}
                 timestamp={msg.timestamp}
+                language={msg.language}
               />
             ))}
             <div ref={chatEndRef} />
@@ -279,6 +431,7 @@ export default function HomePage() {
                 <BsKeyboard className="h-5 w-5" />
               </button>
 
+              {/* ✅ Language Selector */}
               <LanguageSelector value={selectedLang} onChange={setSelectedLang} />
             </div>
 
@@ -323,12 +476,10 @@ export default function HomePage() {
         </section>
       </div>
 
-      {/* Emergency Button with Suspense */}
       <Suspense fallback={null}>
         <EmergencyButton onEmergency={handleEmergency} />
       </Suspense>
 
-      {/* Notification Toast */}
       {notification && (
         <div className="pointer-events-none fixed inset-x-0 top-6 z-50 flex justify-center px-4">
           <Notification
@@ -339,7 +490,6 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Emergency Alert Modal with Suspense */}
       <Suspense fallback={null}>
         <EmergencyAlert
           visible={showEmergencyAlert}
