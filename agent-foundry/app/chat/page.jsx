@@ -86,43 +86,32 @@ export default function HomePage() {
 const handleSendMessage = async (text) => {
   if (!text.trim()) return;
 
-  // Stop any ongoing speech
   stop();
 
-  // ✅ Display user message in their chosen language (as-is)
-  const userMessage = {
-    id: Date.now(),
-    type: "user",
-    message: text,
-    timestamp: Date.now(),
-    language: selectedLang,
-  };
-  setMessages((prev) => [...prev, userMessage]);
-  setTextValue("");
-  setAvatarState("thinking");
-
   try {
-    // ✅ STEP 1: Translate to English for backend (if not English)
-    let englishText = text;
+    // ✅ STEP 1: Translate user's typed text to their selected language FIRST
+    let userLanguageText = text;
     
     if (selectedLang !== "en") {
       try {
-        const translateResponse = await fetch("/api/translate", {
+        console.log(`📝 User typed (in English): "${text}"`);
+        console.log(`🔄 Translating to ${selectedLang} for display...`);
+        
+        const translateToUserLang = await fetch("/api/translate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             text: text,
-            sourceLang: selectedLang,
-            targetLang: "en",
+            sourceLang: "en",  // ← Assume typed text is English
+            targetLang: selectedLang,  // ← Translate to Marathi/Telugu
           }),
         });
 
-        if (translateResponse.ok) {
-          const translateData = await translateResponse.json();
-          if (translateData.success) {
-            englishText = translateData.translatedText;
-            console.log(`📝 User (${selectedLang}):`, text);
-            console.log(`🔄 Translated to English:`, englishText);
+        if (translateToUserLang.ok) {
+          const translateData = await translateToUserLang.json();
+          if (translateData.success && translateData.translatedText) {
+            userLanguageText = translateData.translatedText;
+            console.log(`✅ Translated for display: "${userLanguageText}"`);
           }
         }
       } catch (error) {
@@ -130,7 +119,22 @@ const handleSendMessage = async (text) => {
       }
     }
 
-    // ✅ STEP 2: Send English text to backend
+    // ✅ Display user message in TRANSLATED language
+    const userMessage = {
+      id: Date.now(),
+      type: "user",
+      message: userLanguageText,  // ← Show translated text
+      timestamp: Date.now(),
+      language: selectedLang,
+    };
+    setMessages((prev) => [...prev, userMessage]);
+    setTextValue("");
+    setAvatarState("thinking");
+
+    // ✅ STEP 2: Send ORIGINAL English text to backend
+    let englishText = text;  // Original typed text (already English)
+
+    // ✅ STEP 3: Send English text to backend
     let englishResponse = null;
     let backendFailed = false;
     
@@ -139,8 +143,8 @@ const handleSendMessage = async (text) => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: englishText,
-          originalMessage: text,
+          message: englishText,  // ← Send original English
+          originalMessage: userLanguageText,  // ← Translated version
           language: selectedLang,
         }),
       });
@@ -148,7 +152,6 @@ const handleSendMessage = async (text) => {
       if (response.ok) {
         const data = await response.json();
         
-        // Check for emergency
         if (data.emergency) {
           setEmergencyType(data.emergency_type || "severe");
           setShowEmergencyAlert(true);
@@ -164,18 +167,18 @@ const handleSendMessage = async (text) => {
       backendFailed = true;
     }
 
-    // ✅ STEP 3: If backend failed, use error message (in English first)
+    // ✅ STEP 4: If backend failed, use error message
     if (backendFailed || !englishResponse) {
       englishResponse = "Please try again later. There is some issue on our end.";
       console.log("⚠️ Using error message");
     }
 
-    // ✅ STEP 4: Translate response to user's language
+    // ✅ STEP 5: Translate response to user's language
     let userLanguageResponse = englishResponse;
 
     if (selectedLang !== "en") {
       try {
-        console.log(`🔄 Translating "${englishResponse}" to ${selectedLang}...`);
+        console.log(`🔄 Translating response to ${selectedLang}...`);
         
         const translateBackResponse = await fetch("/api/translate", {
           method: "POST",
@@ -191,20 +194,15 @@ const handleSendMessage = async (text) => {
           const translateBackData = await translateBackResponse.json();
           if (translateBackData.success && translateBackData.translatedText) {
             userLanguageResponse = translateBackData.translatedText;
-            console.log(`✅ Translated to ${selectedLang}:`, userLanguageResponse);
-          } else {
-            console.warn("Translation failed, keeping English");
+            console.log(`✅ Translated response: "${userLanguageResponse}"`);
           }
-        } else {
-          console.warn("Translation API error, keeping English");
         }
       } catch (error) {
         console.error("Translation back error:", error);
-        console.warn("Keeping English due to error");
       }
     }
 
-    // ✅ STEP 5: Display response in user's language
+    // ✅ STEP 6: Display response in user's language
     const botMessage = {
       id: Date.now() + 1,
       type: "bot",
@@ -214,8 +212,8 @@ const handleSendMessage = async (text) => {
     };
     setMessages((prev) => [...prev, botMessage]);
 
-    // ✅ STEP 6: Speak in user's language (TRANSLATED TEXT)
-    console.log(`🎙️ About to speak: "${userLanguageResponse}" in ${selectedLang}`);
+    // ✅ STEP 7: Speak in user's language
+    console.log(`🎙️ Speaking in ${selectedLang}: "${userLanguageResponse}"`);
     
     setAvatarState("speaking");
     speak(userLanguageResponse, selectedLang, () => {
@@ -226,7 +224,6 @@ const handleSendMessage = async (text) => {
   } catch (error) {
     console.error("Fatal error:", error);
     
-    // ✅ Even for fatal errors, translate the error message
     const errorMessageEnglish = "Please try again later. There is some issue on our end.";
     let errorMessageTranslated = errorMessageEnglish;
 
@@ -253,7 +250,6 @@ const handleSendMessage = async (text) => {
       }
     }
 
-    // Display translated error
     const errorBotMessage = {
       id: Date.now() + 1,
       type: "bot",
@@ -263,7 +259,6 @@ const handleSendMessage = async (text) => {
     };
     setMessages((prev) => [...prev, errorBotMessage]);
 
-    // Speak translated error
     setAvatarState("speaking");
     speak(errorMessageTranslated, selectedLang, () => {
       setAvatarState("idle");
@@ -275,6 +270,7 @@ const handleSendMessage = async (text) => {
     });
   }
 };
+
 
 
   // ✅ Helper function to translate error message
