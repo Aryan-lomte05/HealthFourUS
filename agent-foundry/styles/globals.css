@@ -2,192 +2,275 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Base dark gradient background */
+/* ============================================ */
+/* BASE STYLES - MEDICAL THEME */
+/* ============================================ */
+
 body {
   @apply bg-navyDeep text-slate-100;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
-    "Segoe UI", sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "SF Pro Text", 
+    "Inter", "Helvetica Neue", Arial, sans-serif;
+  font-feature-settings: "kern" 1, "liga" 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Animated gradient backdrop */
+/* ============================================ */
+/* ANIMATED MEDICAL GRADIENT BACKGROUND */
+/* ============================================ */
+
 .app-gradient-bg {
-  background: radial-gradient(circle at 0% 0%, #4338ca 0, transparent 55%),
-    radial-gradient(circle at 100% 0%, #4f46e5 0, transparent 55%),
-    radial-gradient(circle at 0% 100%, #6366f1 0, transparent 55%),
-    radial-gradient(circle at 100% 100%, #0f172a 0, #020617 45%, #020617 100%);
+  background: 
+    radial-gradient(circle at 0% 0%, #005F8F 0, transparent 55%),
+    radial-gradient(circle at 100% 0%, #0077B6 0, transparent 55%),
+    radial-gradient(circle at 50% 50%, #10B981 0, transparent 65%),
+    radial-gradient(circle at 0% 100%, #0F172A 0, transparent 50%),
+    radial-gradient(circle at 100% 100%, #020617 0, #020617 100%);
   background-size: 200% 200%;
 }
 
-/* Glassmorphism card */
+/* ============================================ */
+/* GLASSMORPHISM - MEDICAL EDITION */
+/* ============================================ */
+
 .glass-panel {
-  @apply bg-slate-950/40 backdrop-blur-xl border border-slate-50/10 rounded-3xl shadow-glass-soft;
+  @apply bg-slate-950/40 backdrop-blur-xl border border-slate-50/10 rounded-3xl;
+  box-shadow: 
+    0 0 0 1px rgba(0, 119, 182, 0.1),
+    0 18px 45px rgba(15, 23, 42, 0.9),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
-/* Subtle inner glow for panels */
+.glass-panel-medical {
+  @apply bg-slate-950/45 backdrop-blur-2xl border border-medical-primary/20 rounded-4xl;
+  box-shadow: 
+    0 0 0 1px rgba(0, 119, 182, 0.15),
+    0 20px 50px rgba(0, 119, 182, 0.1),
+    0 8px 16px rgba(15, 23, 42, 0.8),
+    inset 0 1px 0 rgba(0, 168, 232, 0.1);
+}
+
 .glass-inner {
-  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.06);
+  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.08);
 }
 
-/* Neon edge button */
+/* Medical-themed glass with subtle green accent */
+.glass-health {
+  @apply bg-emerald-950/30 backdrop-blur-xl border border-emerald-400/20 rounded-3xl;
+  box-shadow: 
+    0 0 20px rgba(16, 185, 129, 0.15),
+    inset 0 1px 0 rgba(16, 185, 129, 0.1);
+}
+
+/* Emergency glass with red accent */
+.glass-urgent {
+  @apply bg-red-950/40 backdrop-blur-xl border border-red-500/30 rounded-3xl;
+  box-shadow: 
+    0 0 25px rgba(239, 68, 68, 0.3),
+    inset 0 1px 0 rgba(239, 68, 68, 0.15);
+}
+
+/* ============================================ */
+/* BUTTONS - MEDICAL THEME */
+/* ============================================ */
+
+.btn-medical-primary {
+  @apply relative inline-flex items-center justify-center rounded-full px-5 py-2.5 text-sm font-semibold tracking-tight;
+  @apply text-white bg-medical-primary hover:bg-medical-primaryDark;
+  @apply transition-all duration-200;
+  box-shadow: 
+    0 0 0 1px rgba(0, 119, 182, 0.5),
+    0 4px 14px rgba(0, 119, 182, 0.4),
+    0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.btn-medical-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 
+    0 0 0 1px rgba(0, 119, 182, 0.7),
+    0 6px 20px rgba(0, 119, 182, 0.5),
+    0 3px 8px rgba(0, 0, 0, 0.4);
+}
+
+.btn-medical-success {
+  @apply relative inline-flex items-center justify-center rounded-full px-5 py-2.5 text-sm font-semibold;
+  @apply text-white bg-medical-success hover:bg-medical-successDark;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
+}
+
+.btn-medical-urgent {
+  @apply relative inline-flex items-center justify-center rounded-full px-5 py-2.5 text-sm font-semibold;
+  @apply text-white bg-medical-urgent hover:bg-medical-urgentDark;
+  box-shadow: 
+    0 0 20px rgba(239, 68, 68, 0.5),
+    0 4px 14px rgba(239, 68, 68, 0.4);
+  animation: pulse-slow 2s ease-in-out infinite;
+}
+
+/* Legacy neon button (keeping for compatibility) */
 .btn-neon {
-  @apply relative inline-flex items-center justify-center rounded-full px-5 py-2 text-sm font-medium tracking-tight;
-  @apply text-slate-50 bg-blurple-600/80 hover:bg-blurple-500;
-  box-shadow: 0 0 0 1px rgba(129, 140, 248, 0.7),
-    0 0 18px rgba(99, 102, 241, 0.9);
+  @apply btn-medical-primary;
 }
 
-.btn-neon::before {
-  content: "";
-  position: absolute;
-  inset: -2px;
-  border-radius: 9999px;
-  background: radial-gradient(circle at 0% 0%, #818cf8, transparent 60%),
-    radial-gradient(circle at 100% 0%, #6366f1, transparent 60%);
-  opacity: 0;
-  transition: opacity 200ms ease-out;
-  z-index: -1;
-}
+/* ============================================ */
+/* CHAT BUBBLES - MEDICAL REDESIGN */
+/* ============================================ */
 
-.btn-neon:hover::before {
-  opacity: 0.8;
-}
-
-/* Chat bubbles springy feel (baseline) */
 .chat-bubble {
-  @apply rounded-3xl px-4 py-2 text-sm;
+  @apply rounded-3xl px-4 py-3 text-sm leading-relaxed;
   transform-origin: 0% 50%;
-  transition:
-    transform 180ms cubic-bezier(0.18, 0.89, 0.32, 1.28),
-    box-shadow 180ms ease,
-    background-color 180ms ease;
+  transition: 
+    transform 200ms cubic-bezier(0.18, 0.89, 0.32, 1.28),
+    box-shadow 200ms ease,
+    background-color 200ms ease;
 }
 
-.chat-bubble-pop {
-  transform: scale(1.02) translateY(-1px);
+.chat-bubble-user {
+  @apply bg-medical-primary/20 border border-medical-primary/30 text-slate-100;
+  box-shadow: 0 2px 8px rgba(0, 119, 182, 0.15);
 }
 
-/* Scrollbar styling for glass containers */
+.chat-bubble-doctor {
+  @apply bg-slate-800/60 border border-slate-700/40 text-slate-100;
+  box-shadow: 
+    0 2px 8px rgba(15, 23, 42, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.chat-bubble-doctor-success {
+  @apply bg-emerald-950/30 border border-emerald-500/25 text-slate-100;
+  box-shadow: 0 2px 10px rgba(16, 185, 129, 0.2);
+}
+
+.chat-bubble-urgent {
+  @apply bg-red-950/40 border-l-4 border-l-red-500 border-t border-r border-b border-red-500/30;
+  box-shadow: 0 2px 12px rgba(239, 68, 68, 0.3);
+}
+
+.chat-bubble:hover {
+  transform: translateY(-1px);
+}
+
+/* ============================================ */
+/* SCROLLBAR - MEDICAL THEME */
+/* ============================================ */
+
 .glass-scroll::-webkit-scrollbar {
   width: 6px;
+  height: 6px;
 }
+
 .glass-scroll::-webkit-scrollbar-track {
   background: transparent;
 }
+
 .glass-scroll::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.5);
+  background: rgba(0, 119, 182, 0.4);
   border-radius: 9999px;
+  transition: background 200ms ease;
 }
+
 .glass-scroll::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.8);
+  background: rgba(0, 119, 182, 0.7);
 }
 
 /* ============================================ */
-/* LOADING PAGE ANIMATIONS */
+/* MEDICAL-SPECIFIC ANIMATIONS */
 /* ============================================ */
 
-/* Shimmer animation for progress bar */
+/* Heartbeat pulse for emergency elements */
+.animate-heartbeat-urgent {
+  animation: heartbeat 1.2s ease-in-out infinite;
+}
+
+/* EKG line animation */
+@keyframes ekgPulse {
+  0%, 100% { 
+    height: 2px;
+    background: rgba(16, 185, 129, 0.6);
+  }
+  10% { 
+    height: 12px;
+    background: rgba(16, 185, 129, 1);
+  }
+  15% { 
+    height: 2px;
+    background: rgba(16, 185, 129, 0.8);
+  }
+  20% { 
+    height: 8px;
+    background: rgba(16, 185, 129, 1);
+  }
+  25% { 
+    height: 2px;
+    background: rgba(16, 185, 129, 0.6);
+  }
+}
+
+.ekg-line {
+  display: inline-block;
+  width: 2px;
+  height: 2px;
+  background: rgba(16, 185, 129, 0.6);
+  animation: ekgPulse 2s ease-in-out infinite;
+}
+
+/* Breathing animation for avatar idle state */
+@keyframes breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+}
+
+.animate-breathe {
+  animation: breathe 4s ease-in-out infinite;
+}
+
+/* ============================================ */
+/* LOADING ANIMATIONS */
+/* ============================================ */
+
 @keyframes shimmer {
-  0% {
-    transform: translateX(-100%);
-  }
-  100% {
-    transform: translateX(100%);
-  }
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
 }
 
 .animate-shimmer {
   animation: shimmer 2.5s infinite;
 }
 
-/* Slow pulse for logo */
-@keyframes pulse-slow {
-  0%, 100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.6;
-    transform: scale(1.1);
-  }
-}
-
-.animate-pulse-slow {
-  animation: pulse-slow 4s ease-in-out infinite;
-}
-
-/* Slow spin for logo ring */
 @keyframes spin-slow {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .animate-spin-slow {
   animation: spin-slow 8s linear infinite;
 }
 
-/* Float animation for orbs and particles */
-@keyframes float-slow {
-  0%, 100% {
-    transform: translate(0, 0);
-  }
-  33% {
-    transform: translate(20px, -20px);
-  }
-  66% {
-    transform: translate(-20px, 20px);
-  }
+@keyframes loading-bar {
+  0% { transform: translateX(-100%); }
+  50% { transform: translateX(0%); }
+  100% { transform: translateX(100%); }
 }
 
-.animate-float-slow {
-  animation: float-slow 15s ease-in-out infinite;
+.animate-loading-bar {
+  animation: loading-bar 1s ease-in-out infinite;
 }
 
-/* Fade in animation */
-@keyframes fade-in {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-fade-in {
-  animation: fade-in 0.6s ease-out;
-}
-
-/* Animation delays for staggered effects */
-.animation-delay-200 {
-  animation-delay: 0.2s;
-}
-
-.animation-delay-400 {
-  animation-delay: 0.4s;
-}
-
-.animation-delay-500 {
-  animation-delay: 0.5s;
-}
-
-.animation-delay-1000 {
-  animation-delay: 1s;
-}
-
-.animation-delay-2000 {
-  animation-delay: 2s;
+/* Medical-themed loading spinner */
+.medical-spinner {
+  border: 3px solid rgba(0, 119, 182, 0.2);
+  border-top-color: #0077B6;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  animation: spin 0.8s linear infinite;
 }
 
 /* ============================================ */
 /* ROUTE LOADING STYLES */
 /* ============================================ */
 
-/* Route loading progress bar */
 .route-progress-bar {
   opacity: 0;
   transition: opacity 0.3s ease;
@@ -200,6 +283,7 @@ body.route-loading .route-progress-bar {
 .route-progress-fill {
   width: 0;
   transition: width 0.5s ease-out;
+  background: linear-gradient(90deg, #0077B6, #10B981);
 }
 
 body.route-loading .route-progress-fill {
@@ -207,18 +291,11 @@ body.route-loading .route-progress-fill {
 }
 
 @keyframes routeProgress {
-  0% {
-    width: 0%;
-  }
-  50% {
-    width: 70%;
-  }
-  100% {
-    width: 100%;
-  }
+  0% { width: 0%; }
+  50% { width: 70%; }
+  100% { width: 100%; }
 }
 
-/* Loading overlay appears during route change */
 .route-loading-overlay {
   opacity: 0;
   transition: opacity 0.3s ease;
@@ -230,27 +307,83 @@ body.route-loading .route-loading-overlay {
   pointer-events: auto;
 }
 
-/* Prevent scroll during route loading */
 body.route-loading {
   overflow: hidden;
 }
 
 /* ============================================ */
-/* LOADING BAR ANIMATION */
+/* UTILITY CLASSES */
 /* ============================================ */
 
-@keyframes loading-bar {
-  0% {
-    transform: translateX(-100%);
+/* Medical badge styles */
+.badge-success {
+  @apply inline-flex items-center rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-medium text-emerald-400 border border-emerald-500/30;
+}
+
+.badge-warning {
+  @apply inline-flex items-center rounded-full bg-amber-500/15 px-2.5 py-0.5 text-xs font-medium text-amber-400 border border-amber-500/30;
+}
+
+.badge-urgent {
+  @apply inline-flex items-center rounded-full bg-red-500/20 px-2.5 py-0.5 text-xs font-medium text-red-400 border border-red-500/40;
+}
+
+.badge-info {
+  @apply inline-flex items-center rounded-full bg-sky-500/15 px-2.5 py-0.5 text-xs font-medium text-sky-400 border border-sky-500/30;
+}
+
+/* Status indicator dot */
+.status-dot {
+  @apply inline-block h-2 w-2 rounded-full;
+}
+
+.status-dot-active {
+  @apply bg-emerald-400;
+  box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.3);
+}
+
+.status-dot-idle {
+  @apply bg-slate-400;
+}
+
+.status-dot-urgent {
+  @apply bg-red-500;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.4);
+  animation: pulse-slow 2s ease-in-out infinite;
+}
+@keyframes slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
   }
-  50% {
-    transform: translateX(0%);
-  }
-  100% {
-    transform: translateX(100%);
+  to {
+    opacity: 1;
+    transform: translateX(0);
   }
 }
 
-.animate-loading-bar {
-  animation: loading-bar 1s ease-in-out infinite;
+@keyframes progress-bar {
+  0% {
+    width: 0%;
+  }
+  100% {
+    width: 100%;
+  }
 }
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.3s ease-out;
+}
+
+.animate-progress-bar {
+  animation: progress-bar 0.8s ease-in-out infinite;
+}
+
+
+/* Animation delays for staggered effects */
+.animation-delay-100 { animation-delay: 0.1s; }
+.animation-delay-200 { animation-delay: 0.2s; }
+.animation-delay-300 { animation-delay: 0.3s; }
+.animation-delay-400 { animation-delay: 0.4s; }
+.animation-delay-500 { animation-delay: 0.5s; }
+.animation-delay-1000 { animation-delay: 1s; }

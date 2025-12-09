@@ -1,79 +1,70 @@
-export async function POST(request) {
+import { NextResponse } from "next/server";
+import db from "@/lib/db";
+import { generatePatientId } from "@/lib/patientId";
+import bcrypt from "bcryptjs";
+
+export async function POST(req) {
   try {
-    const body = await request.json();
+    const body = await req.json();
+    const { name, email, password, age, gender, height, weight, blood_group, allergies, medical_conditions } = body;
 
     // Validate required fields
-    const requiredFields = ['patient_id', 'name', 'email', 'password', 'age', 'gender', 'height', 'weight'];
-    for (const field of requiredFields) {
-      if (!body[field]) {
-        return Response.json(
-          { error: `Missing required field: ${field}` },
-          { status: 400 }
-        );
-      }
+    if (!name || !email || !password) {
+      return NextResponse.json(
+        { error: "Name, email, and password are required" },
+        { status: 400 }
+      );
     }
 
-    // TRY backend first (if Aryan's backend is running)
-    // If it fails, store locally as fallback
-    try {
-      const backendResponse = await fetch("http://localhost:8000/api/patient/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          patient_id: body.patient_id,
-          name: body.name,
-          age: body.age,
-          gender: body.gender,
-          phone: body.phone || "+91 0000000000",
-          location: {
-            lat: 0,
-            lng: 0,
-            address: "India"
-          },
-          email: body.email,
-          password: body.password,
-          height: body.height,
-          weight: body.weight
-        }),
-      });
-
-      if (backendResponse.ok) {
-        console.log("✅ Backend signup successful");
-        return Response.json({
-          success: true,
-          message: "Account created successfully",
-          patient_id: body.patient_id,
-          backend_stored: true
-        });
-      }
-    } catch (backendError) {
-      console.log("⚠️ Backend not available, using local storage");
-    }
-
-    // FALLBACK: Store locally if backend isn't running
-    // This allows development without backend
-    console.log("📦 Storing user data locally (temp solution)");
+    // Check if email already exists
+    const existingUser = db.prepare("SELECT email FROM patients WHERE email = ?").get(email);
     
-    return Response.json({
+    if (existingUser) {
+      return NextResponse.json(
+        { error: "Email already registered. Please login instead." },
+        { status: 409 }
+      );
+    }
+
+    // Generate unique patient ID
+    const patientId = generatePatientId();
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 12);
+
+    // Insert into database
+    const stmt = db.prepare(`
+      INSERT INTO patients (patient_id, name, email, password, age, gender, height, weight, blood_group, allergies, medical_conditions)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    stmt.run(
+      patientId,
+      name,
+      email.toLowerCase(),
+      hashedPassword,
+      age || null,
+      gender || null,
+      height || null,
+      weight || null,
+      blood_group || null,
+      allergies || null,
+      medical_conditions || null
+    );
+
+    console.log(`✅ New patient registered: ${patientId} - ${email}`);
+
+    return NextResponse.json({
       success: true,
-      message: "Account created successfully (stored locally)",
-      patient_id: body.patient_id,
-      user_data: {
-        name: body.name,
-        email: body.email,
-        age: body.age,
-        gender: body.gender,
-        height: body.height,
-        weight: body.weight,
-        password: body.password, // Client will handle storage
-      },
-      backend_stored: false
+      message: "Account created successfully",
+      patient_id: patientId,
+      backend_stored: true,
     });
 
   } catch (error) {
     console.error("Signup error:", error);
-    return Response.json(
-      { error: error.message || "Signup failed" },
+    return NextResponse.json(
+      { error: "Failed to create account. Please try again." },
       { status: 500 }
     );
   }

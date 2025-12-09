@@ -1,87 +1,13 @@
-// "use client";
-
-// import { useRef, useEffect } from "react";
-// import { Canvas, useFrame } from "@react-three/fiber";
-// import { OrbitControls, useGLTF, useAnimations } from "@react-three/drei";
-
-// function DoctorModel({ state = "idle" }) {
-//   const group = useRef();
-//   const { scene, animations } = useGLTF("/models/doctor.glb");
-//   const { actions } = useAnimations(animations, group);
-
-//   useEffect(() => {
-//     Object.values(actions).forEach((action) => action?.stop());
-
-//     if (state === "idle" && actions["Idle"]) {
-//       actions["Idle"].reset().fadeIn(0.5).play();
-//     } else if (state === "thinking" && actions["Thinking"]) {
-//       actions["Thinking"].reset().fadeIn(0.5).play();
-//     } else if (state === "speaking" && actions["Talking"]) {
-//       actions["Talking"].reset().fadeIn(0.5).play();
-//     } else if (actions["Idle"]) {
-//       actions["Idle"].reset().fadeIn(0.5).play();
-//     }
-//   }, [state, actions]);
-
-//   useFrame(() => {
-//     if (group.current && state === "idle") {
-//       group.current.position.y = -1.5 + Math.sin(Date.now() * 0.001) * 0.02;
-//     }
-//   });
-
-//   return (
-//     <group ref={group}>
-//       <primitive
-//         object={scene}
-//         scale={1.6}
-//         position={[0, 1.0, 0]}  // ✅ ADJUSTED: Move avatar up
-//         rotation={[0, 0, 0]}
-//       />
-//     </group>
-//   );
-// }
-
-// export default function DoctorAvatarWithLipSync({ state = "idle" }) {
-//   return (
-//     <div className="h-full w-full">
-//       <Canvas
-//         camera={{ position: [0, 0.5, 3], fov: 45 }}  // ✅ ADJUSTED camera
-//         style={{ background: "transparent" }}
-//       >
-//         <ambientLight intensity={0.6} />
-//         <directionalLight position={[5, 5, 5]} intensity={1} />
-//         <directionalLight position={[-5, 3, -5]} intensity={0.4} />
-//         <spotLight
-//           position={[0, 5, 0]}
-//           angle={0.3}
-//           penumbra={1}
-//           intensity={0.5}
-//         />
-
-//         <DoctorModel state={state} />
-
-//         <OrbitControls
-//           enableZoom={false}
-//           enablePan={false}
-//           minPolarAngle={Math.PI / 2.5}
-//           maxPolarAngle={Math.PI / 2}
-//         />
-//       </Canvas>
-//     </div>
-//   );
-// }
-
-// useGLTF.preload("/models/doctor.glb");
 "use client";
 
 import { useRef, useEffect } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls, useGLTF, useAnimations } from "@react-three/drei";
 
-// ✅ ORIGINAL DoctorModel - UNCHANGED
-function DoctorModel({ state = "idle" }) {
+// ✅ ORIGINAL FemaleDoctorModel - UNCHANGED
+function FemaleDoctorModel({ state = "idle" }) {
   const group = useRef();
-  const { scene, animations } = useGLTF("/models/doctor.glb");
+  const { scene, animations } = useGLTF("/models/female-doctor.glb");
   const { actions } = useAnimations(animations, group);
 
   useEffect(() => {
@@ -108,16 +34,16 @@ function DoctorModel({ state = "idle" }) {
     <group ref={group}>
       <primitive
         object={scene}
-        scale={1.6}
-        position={[0, 1.0, 0]}  // ✅ ORIGINAL POSITION
+        scale={1.6}                    // ✅ ORIGINAL scale
+        position={[0, 1.0, 0]}         // ✅ ORIGINAL position
         rotation={[0, 0, 0]}
       />
     </group>
   );
 }
 
-// ✅ ORIGINAL Canvas setup - ONLY styling wrapper added
-export default function DoctorAvatarWithLipSync({ state = "idle" }) {
+// ✅ ORIGINAL Canvas + Medical styling overlays
+export default function FemaleDoctorAvatar({ state = "idle" }) {
   return (
     <div className="relative h-full w-full rounded-3xl overflow-hidden glass-panel-medical">
       {/* ✅ Medical styling OVERLAYS - doesn't affect 3D positioning */}
@@ -152,17 +78,17 @@ export default function DoctorAvatarWithLipSync({ state = "idle" }) {
           camera={{ position: [0, 0.5, 3], fov: 45 }}  // ✅ ORIGINAL CAMERA
           style={{ background: "transparent" }}
         >
-          <ambientLight intensity={0.6} />
-          <directionalLight position={[5, 5, 5]} intensity={1} />
-          <directionalLight position={[-5, 3, -5]} intensity={0.4} />
+          <ambientLight intensity={0.7} />
+          <directionalLight position={[5, 5, 5]} intensity={1.2} />
+          <directionalLight position={[-5, 3, -5]} intensity={0.5} />
           <spotLight
             position={[0, 5, 0]}
             angle={0.3}
             penumbra={1}
-            intensity={0.5}
+            intensity={0.6}
           />
 
-          <DoctorModel state={state} />
+          <FemaleDoctorModel state={state} />
 
           <OrbitControls
             enableZoom={false}
@@ -183,4 +109,4 @@ export default function DoctorAvatarWithLipSync({ state = "idle" }) {
   );
 }
 
-useGLTF.preload("/models/doctor.glb");
+useGLTF.preload("/models/female-doctor.glb");

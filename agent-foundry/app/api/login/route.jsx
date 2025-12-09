@@ -1,58 +1,51 @@
-export async function POST(request) {
+import { NextResponse } from "next/server";
+import { getDb } from "@/lib/db";
+import { createSession } from "@/lib/patientId";
+import bcrypt from "bcryptjs";
+
+export async function POST(req) {
   try {
-    const { email, password } = await request.json();
+    const { email, password } = await req.json();
 
     if (!email || !password) {
-      return Response.json(
+      return NextResponse.json(
         { error: "Email and password are required" },
         { status: 400 }
       );
     }
 
-    // TRY backend first (if Aryan's backend is running)
-    try {
-      const backendResponse = await fetch("http://localhost:8000/api/patient/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: email,
-          password: password
-        }),
-      });
+    const db = getDb();
+    const patient = db.prepare("SELECT * FROM patients WHERE email = ?").get(email);
 
-      if (backendResponse.ok) {
-        const data = await backendResponse.json();
-        console.log("✅ Backend login successful");
-        return Response.json({
-          success: true,
-          patient_id: data.patient_id,
-          name: data.name,
-          email: data.email,
-          age: data.age,
-          gender: data.gender,
-          height: data.height,
-          weight: data.weight,
-          backend_authenticated: true
-        });
-      }
-    } catch (backendError) {
-      console.log("⚠️ Backend not available, checking local storage");
+    if (!patient) {
+      return NextResponse.json(
+        { error: "Invalid email or password" },
+        { status: 401 }
+      );
     }
 
-    // FALLBACK: Return success so client can check localStorage
-    // Client-side will verify credentials from localStorage
-    console.log("📦 Using local authentication");
-    
-    return Response.json({
+    const isValid = await bcrypt.compare(password, patient.password);
+
+    if (!isValid) {
+      return NextResponse.json(
+        { error: "Invalid email or password" },
+        { status: 401 }
+      );
+    }
+
+    const sessionToken = createSession(patient.patient_id);
+    const { password: _, ...patientData } = patient;
+
+    return NextResponse.json({
       success: true,
-      email: email,
-      backend_authenticated: false,
-      message: "Check local storage for credentials"
+      patient: patientData,
+      sessionToken,
+      message: "Login successful",
     });
 
   } catch (error) {
-    console.error("Login error:", error);
-    return Response.json(
+    console.error("❌ Login error:", error);
+    return NextResponse.json(
       { error: "Login failed" },
       { status: 500 }
     );

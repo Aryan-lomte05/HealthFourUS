@@ -24,6 +24,8 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
+      console.log("📤 Attempting login for:", formData.email);
+
       const response = await fetch("/api/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -39,41 +41,21 @@ export default function LoginPage() {
         throw new Error(data.error || "Login failed");
       }
 
-      // If backend authentication successful, use backend data
-      if (data.backend_authenticated) {
-        localStorage.setItem("isAuthenticated", "true");
-        localStorage.setItem("patientId", data.patient_id);
-        localStorage.setItem("patientName", data.name);
-        localStorage.setItem("patientEmail", data.email);
-        localStorage.setItem("userAge", data.age);
-        localStorage.setItem("userGender", data.gender);
-        localStorage.setItem("userHeight", data.height);
-        localStorage.setItem("userWeight", data.weight);
-      } else {
-        // Fallback: Check localStorage
-        const storedUserData = localStorage.getItem("user_" + formData.email);
-        
-        if (!storedUserData) {
-          throw new Error("Account not found. Please sign up first.");
-        }
+      console.log("✅ Login successful:", data);
 
-        const userData = JSON.parse(storedUserData);
-
-        // Verify password
-        if (userData.password !== formData.password) {
-          throw new Error("Invalid email or password");
-        }
-
-        // Store session data
-        localStorage.setItem("isAuthenticated", "true");
-        localStorage.setItem("patientId", userData.patient_id);
-        localStorage.setItem("patientName", userData.name);
-        localStorage.setItem("patientEmail", userData.email);
-        localStorage.setItem("userAge", userData.age);
-        localStorage.setItem("userGender", userData.gender);
-        localStorage.setItem("userHeight", userData.height);
-        localStorage.setItem("userWeight", userData.weight);
-      }
+      // ✅ Store session data from database
+      localStorage.setItem("isAuthenticated", "true");
+      localStorage.setItem("patientId", data.patient.patient_id);
+      localStorage.setItem("patientName", data.patient.name);
+      localStorage.setItem("patientEmail", data.patient.email);
+      localStorage.setItem("sessionToken", data.sessionToken);
+      
+      // Store optional fields if available
+      if (data.patient.age) localStorage.setItem("userAge", data.patient.age);
+      if (data.patient.gender) localStorage.setItem("userGender", data.patient.gender);
+      if (data.patient.height) localStorage.setItem("userHeight", data.patient.height);
+      if (data.patient.weight) localStorage.setItem("userWeight", data.patient.weight);
+      if (data.patient.blood_group) localStorage.setItem("userBloodGroup", data.patient.blood_group);
 
       // Show success notification
       setNotification({
@@ -81,13 +63,13 @@ export default function LoginPage() {
         message: "Login successful! Redirecting...",
       });
 
-      // Redirect to dashboard
+      // Redirect to upload page
       setTimeout(() => {
         router.push("/dashboard");
       }, 1000);
 
     } catch (error) {
-      console.error("Login error:", error);
+      console.error("❌ Login error:", error);
       setNotification({
         type: "error",
         message: error.message || "Invalid email or password",
@@ -113,7 +95,7 @@ export default function LoginPage() {
           </div>
           <h1 className="text-2xl font-bold text-slate-50">Welcome Back</h1>
           <p className="mt-2 text-sm text-slate-400">
-            Login to AgentFoundry Dashboard
+            Login to HealthFourUs Dashboard
           </p>
         </div>
 
@@ -187,7 +169,14 @@ export default function LoginPage() {
             disabled={loading}
             className="btn-neon w-full py-3 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? "Logging in..." : "Login to Dashboard"}
+            {loading ? (
+              <span className="flex items-center justify-center gap-2">
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-transparent" />
+                Logging in...
+              </span>
+            ) : (
+              "Login to Dashboard"
+            )}
           </button>
         </form>
 

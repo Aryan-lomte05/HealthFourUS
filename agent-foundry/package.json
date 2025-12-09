@@ -11,6 +11,8 @@
   "dependencies": {
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.4.2",
+    "bcryptjs": "^3.0.3",
+    "better-sqlite3": "^12.5.0",
     "framer-motion": "^11.18.2",
     "next": "^16.0.7",
     "react": "^19.2.1",
